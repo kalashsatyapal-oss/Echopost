@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import AdminRequest from "../models/AdminRequest.js";
 const router = express.Router();
+import { verifyToken } from "../middleware/verifyToken.js";
 
 // REGISTER
 router.post("/register", async (req, res) => {
@@ -48,6 +49,32 @@ router.post("/login", async (req, res) => {
     res.json({ token, user: { id: user._id, name: user.name, role: user.role, email: user.email } });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// UPDATE PROFILE — requires Authorization: Bearer <token>
+router.post("/update", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { name, profileImage } = req.body; // profileImage should be a base64 data URI or null
+
+    // Basic validation
+    if (!name && typeof profileImage === "undefined") {
+      return res.status(400).json({ error: "Nothing to update" });
+    }
+
+    const updatePayload = {};
+    if (name) updatePayload.name = name;
+    // allow clearing profileImage by sending null
+    if (typeof profileImage !== "undefined") updatePayload.profileImage = profileImage;
+
+    const updated = await User.findByIdAndUpdate(userId, updatePayload, { new: true, select: "-password" });
+    if (!updated) return res.status(404).json({ error: "User not found" });
+
+    return res.json({ message: "Profile updated", user: updated });
+  } catch (err) {
+    console.error("Error /api/auth/update:", err);
+    return res.status(500).json({ error: err.message });
   }
 });
 
