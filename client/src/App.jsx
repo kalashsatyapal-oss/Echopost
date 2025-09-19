@@ -4,7 +4,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import { useSelector } from "react-redux";
-
+import SuperadminDashboard from "./pages/SuperadminDashboard";
 function App() {
   const { token } = useSelector((s) => s.auth);
 
@@ -16,6 +16,10 @@ function App() {
       <Route
         path="/dashboard"
         element={token ? <Dashboard /> : <Navigate to="/login" />}
+      />
+      <Route
+        path="/superadmin"
+        element={token ? <SuperadminDashboard /> : <Navigate to="/login" />}
       />
     </Routes>
   );

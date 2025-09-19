@@ -1,21 +1,20 @@
 import { useState } from "react";
-import { useDispatch } from "react-redux";
-import { registerUser } from "../features/authSlice";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 export default function Register() {
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "user", adminPasskey: "" });
-  const dispatch = useDispatch();
+  const [form, setForm] = useState({ name: "", email: "", password: "", role: "user" });
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const res = await dispatch(registerUser(form));
-    if (res.error) {
-      alert(res.error.message || "Registration failed");
-      return;
+    try {
+      const res = await axios.post("http://localhost:5000/api/auth/register", form);
+      alert(res.data.message);
+      navigate("/login");
+    } catch (err) {
+      alert(err.response?.data?.error || "Registration failed");
     }
-    navigate("/login");
   };
 
   return (
@@ -29,24 +28,11 @@ export default function Register() {
         <input type="password" placeholder="Password" className="w-full p-2 mb-4 border rounded"
           onChange={(e) => setForm({ ...form, password: e.target.value })} />
 
-        {/* Role Selector */}
-        <select
-          className="w-full p-2 mb-4 border rounded"
-          onChange={(e) => setForm({ ...form, role: e.target.value })}
-        >
+        <select className="w-full p-2 mb-4 border rounded"
+          onChange={(e) => setForm({ ...form, role: e.target.value })}>
           <option value="user">User</option>
           <option value="admin">Admin</option>
         </select>
-
-        {/* Show Admin Passkey only if role is admin */}
-        {form.role === "admin" && (
-          <input
-            type="password"
-            placeholder="Admin Passkey"
-            className="w-full p-2 mb-4 border rounded"
-            onChange={(e) => setForm({ ...form, adminPasskey: e.target.value })}
-          />
-        )}
 
         <button className="w-full bg-green-500 text-white py-2 rounded">Register</button>
       </form>

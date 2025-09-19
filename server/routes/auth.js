@@ -2,33 +2,31 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
-
+import AdminRequest from "../models/AdminRequest.js";
 const router = express.Router();
 
 // REGISTER
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role, adminPasskey } = req.body;
+    const { name, email, password, role } = req.body;
 
-    // Check if user exists
-    const existing = await User.findOne({ email });
-    if (existing) return res.status(400).json({ error: "Email already registered" });
-
-    // Role logic
-    let finalRole = "user";
-    if (role === "admin") {
-      if (adminPasskey !== process.env.ADMIN_PASSKEY) {
-        return res.status(400).json({ error: "Invalid admin passkey" });
-      }
-      finalRole = "admin";
+    const existingUser = await User.findOne({ email });
+    const existingReq = await AdminRequest.findOne({ email });
+    if (existingUser || existingReq) {
+      return res.status(400).json({ error: "Email already exists" });
     }
 
-    // Hash password
     const hashed = await bcrypt.hash(password, 10);
 
-    const user = await User.create({ name, email, password: hashed, role: finalRole });
+    // If role=admin → create request instead
+    if (role === "admin") {
+      const request = await AdminRequest.create({ name, email, password: hashed });
+      return res.json({ message: "Admin request submitted, awaiting superadmin approval", request });
+    }
 
-    res.json({ message: "User registered", user: { id: user._id, name: user.name, role: user.role } });
+    // Otherwise → normal user
+    const user = await User.create({ name, email, password: hashed, role: "user" });
+    res.json({ message: "User registered", user });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
