@@ -18,13 +18,18 @@ export const createBlog = async (req, res) => {
 };
 
 // Get All Blogs with Search & Category Filter
+// Get all blogs with search + category
 export const getBlogs = async (req, res) => {
   try {
     const { search, category } = req.query;
     const query = {};
 
-    if (search) query.title = { $regex: search, $options: "i" };
-    if (category) query.category = category;
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
+    if (category) {
+      query.category = category;
+    }
 
     const blogs = await Blog.find(query)
       .populate("author", "name profileImage")
