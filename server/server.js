@@ -4,16 +4,31 @@ import dotenv from "dotenv";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import chalk from "chalk";
+import morgan from "morgan"; // ✅ Dev-friendly logging
 
 import authRoutes from "./routes/auth.js";
-import User from "./models/User.js";
 import superadminRoutes from "./routes/superadmin.js";
 import blogRoutes from "./routes/blogRoutes.js";
+import User from "./models/User.js";
 
 dotenv.config();
 const app = express();
+
+// 🌍 Environment
+const isDev = process.env.NODE_ENV !== "production";
+
+// 🛡️ Middleware
 app.use(cors());
 app.use(express.json());
+if (isDev) app.use(morgan("dev")); // ✅ Log requests in dev
+
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; connect-src 'self' http://localhost:5000"
+  );
+  next();
+});
 
 // ✅ Validate required env vars
 ["MONGO_URI", "SUPERADMIN_EMAIL", "SUPERADMIN_PASSWORD"].forEach((key) => {
@@ -23,7 +38,7 @@ app.use(express.json());
   }
 });
 
-// 🛡️ Superadmin Seeder
+// 🌟 Superadmin Seeder
 const seedSuperAdmin = async () => {
   try {
     const existing = await User.findOne({ role: "superadmin" });
@@ -37,7 +52,7 @@ const seedSuperAdmin = async () => {
       name: "Super Admin",
       email: process.env.SUPERADMIN_EMAIL,
       password: hashed,
-      role: "superadmin"
+      role: "superadmin",
     });
 
     await superadmin.save();
@@ -70,9 +85,20 @@ app.use("/api/auth", authRoutes);
 app.use("/api/superadmin", superadminRoutes);
 app.use("/api/blogs", blogRoutes);
 
+// 🧪 Dev-only test route
+if (isDev) {
+  app.get("/api/dev/ping", (req, res) => {
+    res.json({ message: "Server is alive 🚀" });
+  });
+}
+
 // 🚀 Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(chalk.cyan(`🚀 Server running on port ${PORT} at ${new Date().toLocaleTimeString()}`));
+  console.log(
+    chalk.cyan(
+      `🚀 Server running on port ${PORT} [${isDev ? "development" : "production"}] at ${new Date().toLocaleTimeString()}`
+    )
+  );
   connectDB();
 });
