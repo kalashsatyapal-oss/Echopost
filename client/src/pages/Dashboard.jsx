@@ -3,15 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../features/authSlice";
 import logo from "../assets/logo.png";
-import BlogList from "./BlogList";
-import BlogEditor from "../components/BlogEditor";
 export default function Dashboard() {
   const { user } = useSelector((s) => s.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [showEditor, setShowEditor] = useState(false);
+  
 
   // helper to get initials
   const initials = (name = "") =>
@@ -62,16 +60,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <button
-          className="mr-2 px-3 py-1 bg-blue-500 text-white rounded"
-          onClick={() => setShowEditor(true)}
-        >
-          Write Blog
-        </button>
         {/* <ProfileMenuIcon user={user} /> */}
-        {showEditor && (
-          <BlogEditor user={user} onClose={() => setShowEditor(false)} />
-        )}
         <div className="relative">
           <button
             className="flex items-center gap-2 p-1 rounded hover:bg-gray-100"
@@ -164,7 +153,7 @@ export default function Dashboard() {
       {/* Main content area */}
       <main className="flex flex-col items-center justify-center flex-grow px-4">
         {/* Add dashboard content here */}
-        <BlogList user={user} />
+
       </main>
 
       {/* Footer */}

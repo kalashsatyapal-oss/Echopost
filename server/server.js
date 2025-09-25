@@ -8,7 +8,6 @@ import morgan from "morgan"; // ✅ Dev-friendly logging
 
 import authRoutes from "./routes/auth.js";
 import superadminRoutes from "./routes/superadmin.js";
-import blogRoutes from "./routes/blogRoutes.js";
 import User from "./models/User.js";
 
 dotenv.config();
@@ -83,7 +82,6 @@ const connectDB = async (retries = 5) => {
 // 📡 Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/superadmin", superadminRoutes);
-app.use("/api/blogs", blogRoutes);
 
 // 🧪 Dev-only test route
 if (isDev) {
