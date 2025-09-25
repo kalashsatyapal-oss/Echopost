@@ -8,6 +8,7 @@ import chalk from "chalk";
 import authRoutes from "./routes/auth.js";
 import User from "./models/User.js";
 import superadminRoutes from "./routes/superadmin.js";
+import blogRoutes from "./routes/blogRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -67,6 +68,7 @@ const connectDB = async (retries = 5) => {
 // 📡 Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/superadmin", superadminRoutes);
+app.use("/api/blogs", blogRoutes);
 
 // 🚀 Start Server
 const PORT = process.env.PORT || 5000;
