@@ -16,29 +16,11 @@ export default function Dashboard() {
 
   const navigate = useNavigate();
 
-  // Fetch all blogs
-  const fetchBlogs = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/api/blogs", {
-        params: { search, category },
-      });
-      setBlogs(res.data);
-
-      const uniqueCategories = [
-        ...new Set(res.data.map((b) => b.category).filter(Boolean)),
-      ];
-      setCategories(uniqueCategories);
-    } catch (err) {
-      console.error("Failed to fetch blogs:", err);
-    }
-  };
-
   // Fetch current user
   const fetchUser = async () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
-
       const res = await axios.get("http://localhost:5000/api/users/me", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -48,32 +30,49 @@ export default function Dashboard() {
     }
   };
 
+  // Fetch blogs
+  const fetchBlogs = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/blogs", {
+        params: { search, category },
+      });
+
+      // Convert likes to strings to match currentUserId
+      const blogsWithStringLikes = res.data.map((b) => ({
+        ...b,
+        likes: b.likes.map((id) => id.toString()),
+      }));
+
+      setBlogs(blogsWithStringLikes);
+
+      // Extract unique categories
+      const uniqueCategories = [
+        ...new Set(res.data.map((b) => b.category).filter(Boolean)),
+      ];
+      setCategories(uniqueCategories);
+    } catch (err) {
+      console.error("Failed to fetch blogs:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUser();
+  }, []);
+
   useEffect(() => {
     fetchBlogs();
-    fetchUser();
-  }, [search, category]);
+  }, [search, category, user]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/login");
   };
 
-  // Fix: Convert Base64 string to proper data URI
   const getProfileImage = () => {
     if (!user?.profileImage) return null;
-
-    // Already proper Base64 or URL
     if (user.profileImage.startsWith("data:image") || user.profileImage.startsWith("http")) {
       return user.profileImage;
     }
-
-    // Pure Base64 string
-    const base64Pattern = /^[A-Za-z0-9+/]+={0,2}$/;
-    if (base64Pattern.test(user.profileImage)) {
-      return `data:image/png;base64,${user.profileImage}`;
-    }
-
-    // Otherwise, assume server path
     return `http://localhost:5000${user.profileImage}`;
   };
 
@@ -139,7 +138,7 @@ export default function Dashboard() {
         </div>
 
         {/* Blog List */}
-        <AllBlogList blogs={blogs} />
+        <AllBlogList blogs={blogs} currentUserId={user?._id} refreshBlogs={fetchBlogs} />
       </div>
     </div>
   );

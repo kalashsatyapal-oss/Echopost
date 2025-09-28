@@ -93,6 +93,7 @@ export const deleteBlog = async (req, res) => {
 };
 
 // Like/Unlike Blog
+// Toggle like
 export const toggleLike = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
@@ -108,6 +109,7 @@ export const toggleLike = async (req, res) => {
     await blog.save();
     res.json(blog);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };

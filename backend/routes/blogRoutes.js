@@ -20,6 +20,6 @@ router.route("/:id")
   .put(protect, updateBlog)
   .delete(protect, deleteBlog);
 
-router.route("/:id/like").put(protect, toggleLike);
+router.put("/like/:id", protect, toggleLike);
 
 export default router;
