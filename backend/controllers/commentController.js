@@ -14,7 +14,9 @@ export const addComment = async (req, res) => {
       text,
     });
 
-    res.status(201).json(comment);
+    // Return the populated comment
+    const populatedComment = await comment.populate("author", "name profileImage");
+    res.status(201).json(populatedComment);
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
@@ -27,6 +29,25 @@ export const getComments = async (req, res) => {
       .populate("author", "name profileImage")
       .sort({ createdAt: -1 });
     res.json(comments);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Update Comment
+export const updateComment = async (req, res) => {
+  try {
+    const comment = await Comment.findById(req.params.commentId);
+    if (!comment) return res.status(404).json({ message: "Comment not found" });
+
+    if (comment.author.toString() !== req.user._id.toString())
+      return res.status(403).json({ message: "Not authorized" });
+
+    comment.text = req.body.text;
+    await comment.save();
+
+    const populatedComment = await comment.populate("author", "name profileImage");
+    res.json(populatedComment);
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
