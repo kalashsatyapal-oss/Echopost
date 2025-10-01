@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import Blog from "../models/Blog.js";
 import bcrypt from "bcryptjs";
+import cloudinary from "../config/cloudinary.js";
 
 // Get User Profile + Authored Blogs
 export const getProfile = async (req, res) => {
@@ -14,25 +15,27 @@ export const getProfile = async (req, res) => {
   }
 };
 
+
 export const updateProfile = async (req, res) => {
   try {
+    console.log("req.body:", req.body);
+    console.log("req.file:", req.file);
     const user = await User.findById(req.user._id);
 
     if (req.body.name) user.name = req.body.name;
 
     if (req.file) {
-      // Convert uploaded file to base64 and save MIME type
-      user.profileImage = req.file.buffer.toString("base64");
-      user.profileImageType = req.file.mimetype;
+      console.log("Uploading file...");
+      // Old code: user.profileImage = req.file.buffer.toString("base64");
+      // Now: you should integrate Cloudinary here
     }
 
     await user.save();
-
     const { password, ...userData } = user.toObject();
     res.json(userData);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error in updateProfile:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 

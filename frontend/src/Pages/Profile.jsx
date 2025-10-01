@@ -10,6 +10,7 @@ export default function Profile() {
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [image, setImage] = useState(null);
+  const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch profile + blogs
@@ -22,14 +23,25 @@ export default function Profile() {
         setUser(res.data.user || {});
         setBlogs(res.data.blogs || []);
         setName(res.data.user?.name || "");
-        setLoading(false);
+        setPreview(res.data.user?.profileImage || "/default-avatar.png");
       } catch (err) {
         console.error("Error fetching profile:", err);
+      } finally {
         setLoading(false);
       }
     };
     fetchProfile();
   }, [token]);
+
+  // Preview selected image
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImage(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
 
   // Update profile (name + image)
   const handleUpdate = async () => {
@@ -52,12 +64,16 @@ export default function Profile() {
       alert("Profile updated successfully!");
     } catch (err) {
       console.error("Error updating profile:", err);
-      alert("Failed to update profile");
+      alert(err.response?.data?.message || "Failed to update profile");
     }
   };
 
   // Change password
   const handlePasswordChange = async () => {
+    if (!oldPassword || !newPassword) {
+      alert("Please fill both password fields");
+      return;
+    }
     try {
       await axios.put(
         "http://localhost:5000/api/users/change-password",
@@ -73,33 +89,17 @@ export default function Profile() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="max-w-2xl mx-auto mt-10 p-6 text-center">
-        <p>Loading profile...</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="max-w-2xl mx-auto mt-10 p-6 text-center">
-        <p>Unable to load profile.</p>
-      </div>
-    );
-  }
+  if (loading) return <p className="text-center mt-10">Loading profile...</p>;
+  if (!user) return <p className="text-center mt-10">Unable to load profile.</p>;
 
   return (
     <div className="max-w-2xl mx-auto mt-10 p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-4">Profile</h1>
 
+      {/* Profile Image */}
       <div className="flex flex-col items-center mb-4">
         <img
-          src={
-            user.profileImage
-              ? `data:${user.profileImageType};base64,${user.profileImage}`
-              : "/default-avatar.png"
-          }
+          src={preview}
           alt="profile"
           className="w-24 h-24 rounded-full mb-2 object-cover"
         />
@@ -107,10 +107,11 @@ export default function Profile() {
           type="file"
           className="w-full p-2"
           accept="image/*"
-          onChange={(e) => setImage(e.target.files[0])}
+          onChange={handleImageChange}
         />
       </div>
 
+      {/* Name */}
       <input
         type="text"
         className="w-full p-2 mb-4 border rounded"
@@ -124,6 +125,7 @@ export default function Profile() {
         Update Profile
       </button>
 
+      {/* Password Change */}
       <h2 className="text-xl font-semibold mb-2">Change Password</h2>
       <input
         type="password"
@@ -146,6 +148,7 @@ export default function Profile() {
         Change Password
       </button>
 
+      {/* Blogs */}
       <h2 className="text-xl font-semibold mb-2">My Blogs</h2>
       {blogs.length > 0 ? (
         <ul className="space-y-2">
