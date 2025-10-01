@@ -12,8 +12,9 @@ export default function Profile() {
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
 
-  // Fetch profile + blogs
+  // Fetch profile and blogs
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -33,7 +34,7 @@ export default function Profile() {
     fetchProfile();
   }, [token]);
 
-  // Preview selected image
+  // Preview new image immediately
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -43,37 +44,49 @@ export default function Profile() {
     reader.readAsDataURL(file);
   };
 
-  // Update profile (name + image)
+  // Update profile reactively
   const handleUpdate = async () => {
-    try {
-      const formData = new FormData();
-      formData.append("name", name);
-      if (image) formData.append("profileImage", image);
+    if (!name.trim()) return alert("Name cannot be empty");
+    setUpdating(true);
 
-      const res = await axios.put(
-        "http://localhost:5000/api/users/update",
-        formData,
-        {
+    try {
+      let res;
+      if (image) {
+        const formData = new FormData();
+        formData.append("name", name);
+        formData.append("profileImage", image);
+
+        res = await axios.put("http://localhost:5000/api/users/update", formData, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "multipart/form-data",
           },
-        }
-      );
+        });
+      } else {
+        res = await axios.put(
+          "http://localhost:5000/api/users/update",
+          { name },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
+
+      // Update state reactively
       setUser(res.data);
+      setPreview(res.data.profileImage || "/default-avatar.png");
+      setImage(null);
       alert("Profile updated successfully!");
     } catch (err) {
       console.error("Error updating profile:", err);
       alert(err.response?.data?.message || "Failed to update profile");
+    } finally {
+      setUpdating(false);
     }
   };
 
   // Change password
   const handlePasswordChange = async () => {
-    if (!oldPassword || !newPassword) {
-      alert("Please fill both password fields");
-      return;
-    }
+    if (!oldPassword || !newPassword) return alert("Please fill both password fields");
+
     try {
       await axios.put(
         "http://localhost:5000/api/users/change-password",
@@ -117,15 +130,17 @@ export default function Profile() {
         className="w-full p-2 mb-4 border rounded"
         value={name}
         onChange={(e) => setName(e.target.value)}
+        disabled={updating}
       />
       <button
         onClick={handleUpdate}
-        className="w-full bg-blue-500 text-white py-2 rounded mb-6"
+        className={`w-full py-2 rounded mb-6 text-white ${updating ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'}`}
+        disabled={updating}
       >
-        Update Profile
+        {updating ? "Updating..." : "Update Profile"}
       </button>
 
-      {/* Password Change */}
+      {/* Password */}
       <h2 className="text-xl font-semibold mb-2">Change Password</h2>
       <input
         type="password"
@@ -153,9 +168,7 @@ export default function Profile() {
       {blogs.length > 0 ? (
         <ul className="space-y-2">
           {blogs.map((b) => (
-            <li key={b._id} className="p-2 border rounded">
-              {b.title}
-            </li>
+            <li key={b._id} className="p-2 border rounded">{b.title}</li>
           ))}
         </ul>
       ) : (
