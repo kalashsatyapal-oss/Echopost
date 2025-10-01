@@ -68,22 +68,9 @@ export default function Dashboard() {
     navigate("/login");
   };
 
+  // Simplified: Cloudinary URL
   const getProfileImage = () => {
-    if (!user?.profileImage) return null;
-
-    // Check if it's already a Base64 string
-    const base64Pattern = /^[A-Za-z0-9+/]+={0,2}$/;
-    if (base64Pattern.test(user.profileImage)) {
-      return `data:image/png;base64,${user.profileImage}`;
-    }
-
-    // Already a data URL or HTTP URL
-    if (user.profileImage.startsWith("data:image") || user.profileImage.startsWith("http")) {
-      return user.profileImage;
-    }
-
-    // Otherwise, prepend server URL
-    return `http://localhost:5000${user.profileImage}`;
+    return user?.profileImage || "/default-avatar.png";
   };
 
   return (
