@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 import Sidebar from "../components/Sidebar.jsx";
 import ProfileMenu from "../components/ProfileMenu.jsx";
+import BlogList from "../components/BlogList.jsx";
 
 export default function MyBlogs() {
   const [blogs, setBlogs] = useState([]);
@@ -216,147 +217,27 @@ export default function MyBlogs() {
         </div>
 
         {/* Blog List */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {blogs.length > 0 ? (
-            blogs.map((b) => {
-              const isLiked = likedBlogIds.includes(b._id);
-              const isAnimating = activeAnimations[b._id];
-              const comments = commentsData[b._id] || [];
-              const commentCount = commentCounts[b._id] || 0;
-
-              return (
-                <div key={b._id} className="p-5 bg-white rounded-lg shadow hover:shadow-xl transition border flex flex-col justify-between">
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                      <Link to={`/blog/${b._id}`} className="hover:text-blue-600">
-                        {b.title}
-                      </Link>
-                    </h2>
-                    <p className="text-sm text-blue-600 font-medium mb-2">{b.category || "Uncategorized"}</p>
-                    <p className="text-gray-700 line-clamp-3 mb-3" dangerouslySetInnerHTML={{ __html: b.content }} />
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex justify-between items-center mt-2">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => toggleLike(b._id)}
-                        className={`relative flex items-center gap-1 font-semibold transition-transform duration-150 ${
-                          isLiked ? "text-blue-500 scale-110" : "text-gray-600"
-                        }`}
-                      >
-                        👍 {b.likes.length}
-                        {isAnimating && (
-                          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-2">
-                            <span className="animate-fly-thumbs text-blue-500 text-lg">👍</span>
-                            {[...Array(6)].map((_, i) => (
-                              <span key={i} className={`absolute w-1 h-1 bg-blue-400 rounded-full animate-particle-${i}`} />
-                            ))}
-                          </div>
-                        )}
-                      </button>
-                      <button onClick={() => toggleComments(b._id)} className="text-gray-600 font-semibold">
-                        💬 {commentCount} Comments
-                      </button>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Link
-                        to={`/edit-blog/${b._id}`}
-                        className="px-3 py-1 bg-yellow-400 text-white rounded hover:bg-yellow-500"
-                      >
-                        Edit
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(b._id)}
-                        className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Inline comments */}
-                  {openComments[b._id] && (
-                    <div className="mt-3 border-t pt-3">
-                      <div className="flex gap-2 mb-2">
-                        <input
-                          type="text"
-                          placeholder="Write a comment..."
-                          value={newCommentText[b._id] || ""}
-                          onChange={(e) => setNewCommentText((prev) => ({ ...prev, [b._id]: e.target.value }))}
-                          className="flex-grow p-2 border rounded shadow-sm"
-                        />
-                        <button
-                          onClick={() => addComment(b._id)}
-                          className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-                        >
-                          Comment
-                        </button>
-                      </div>
-
-                      {comments.map((c) => (
-                        <div key={c._id} className="mb-2 p-2 bg-gray-50 rounded shadow-sm flex justify-between items-start gap-2">
-                          <div className="flex-1">
-                            <div className="flex justify-between items-center">
-                              <span className="font-semibold text-gray-700">{c.author.name}</span>
-                            </div>
-                            {editingCommentId === c._id ? (
-                              <div className="mt-1">
-                                <input
-                                  type="text"
-                                  value={editCommentText}
-                                  onChange={(e) => setEditCommentText(e.target.value)}
-                                  className="w-full p-2 border rounded"
-                                />
-                                <div className="flex gap-2 mt-1">
-                                  <button
-                                    onClick={() => saveEditComment(b._id, c._id)}
-                                    className="px-2 py-1 bg-green-500 text-white rounded"
-                                  >
-                                    Save
-                                  </button>
-                                  <button
-                                    onClick={() => setEditingCommentId(null)}
-                                    className="px-2 py-1 bg-gray-400 text-white rounded"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="mt-1 text-gray-700">{c.text}</p>
-                            )}
-                          </div>
-                          {c.author._id === currentUserId && editingCommentId !== c._id && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => startEditComment(c._id, c.text)}
-                                className="text-sm text-yellow-600 hover:underline"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => deleteComment(b._id, c._id)}
-                                className="text-sm text-red-600 hover:underline"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          ) : (
-            <div className="col-span-full text-center text-gray-500 py-10 bg-gray-50 rounded-lg shadow-inner">
-              You haven’t written any blogs yet.
-            </div>
-          )}
-        </div>
+        <BlogList
+          blogs={blogs}
+          likedBlogIds={likedBlogIds}
+          activeAnimations={activeAnimations}
+          openComments={openComments}
+          commentsData={commentsData}
+          commentCounts={commentCounts}
+          currentUserId={currentUserId}
+          toggleLike={toggleLike}
+          toggleComments={toggleComments}
+          handleDelete={handleDelete}
+          setNewCommentText={setNewCommentText}
+          newCommentText={newCommentText}
+          addComment={addComment}
+          editingCommentId={editingCommentId}
+          startEditComment={startEditComment}
+          saveEditComment={saveEditComment}
+          editCommentText={editCommentText}
+          setEditCommentText={setEditCommentText}
+          deleteComment={deleteComment}
+        />
       </div>
 
       <style>

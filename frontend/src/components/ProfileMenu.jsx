@@ -1,18 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 
 export default function ProfileMenu({ user, handleLogout, getProfileImage }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef();
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Optimize Cloudinary image if available
+  const profileImageSrc = user?.profileImage
+    ? `${getProfileImage()}?w_100,h_100,c_fill,q_auto,f_auto`
+    : null;
 
   return (
-    <div className="relative">
+    <div className="relative" ref={menuRef}>
       <button
         onClick={() => setMenuOpen(!menuOpen)}
+        aria-haspopup="true"
+        aria-expanded={menuOpen}
         className="w-10 h-10 rounded-full border flex items-center justify-center overflow-hidden focus:outline-none shadow"
       >
-        {user?.profileImage ? (
+        {profileImageSrc ? (
           <img
-            src={getProfileImage()}
+            src={profileImageSrc}
             alt="profile"
             className="w-full h-full object-cover rounded-full"
             onError={(e) => {
