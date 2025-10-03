@@ -4,7 +4,7 @@ import { useSelector } from "react-redux";
 import axios from "axios";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import {TextStyle} from "@tiptap/extension-text-style";
+import { TextStyle } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
 import FontFamily from "@tiptap/extension-font-family";
 
@@ -31,14 +31,17 @@ export default function EditBlog() {
   const [mainCategory, setMainCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
   const [content, setContent] = useState("");
+  const [imageFile, setImageFile] = useState(null);
+  const [existingImage, setExistingImage] = useState(null);
 
   const editor = useEditor({
-    extensions: [StarterKit, TextStyle, Color,  FontFamily],
+    extensions: [StarterKit, TextStyle, Color, FontFamily],
     content: "",
     onUpdate: ({ editor }) => setContent(editor.getHTML()),
     editorProps: {
       attributes: {
-        class: "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none min-h-[200px] p-2 border rounded",
+        class:
+          "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none min-h-[200px] p-2 border rounded",
         placeholder: "Edit your blog content here...",
       },
     },
@@ -55,6 +58,7 @@ export default function EditBlog() {
         setMainCategory(main);
         setSubCategory(sub || "");
         setContent(res.data.content);
+        setExistingImage(res.data.image || null);
 
         if (editor) editor.commands.setContent(res.data.content);
       } catch (err) {
@@ -65,7 +69,6 @@ export default function EditBlog() {
     fetchBlog();
   }, [id, editor]);
 
-  // Handle update
   const handleUpdate = async (e) => {
     e.preventDefault();
     if (!title || !mainCategory || !content) {
@@ -76,11 +79,19 @@ export default function EditBlog() {
     const category = subCategory ? `${mainCategory} > ${subCategory}` : mainCategory;
 
     try {
-      await axios.put(
-        `http://localhost:5000/api/blogs/${id}`,
-        { title, category, content },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("category", category);
+      formData.append("content", content);
+      if (imageFile) formData.append("image", imageFile);
+
+      await axios.put(`http://localhost:5000/api/blogs/${id}`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
       alert("Blog updated successfully!");
       navigate("/my-blogs");
     } catch (err) {
@@ -93,6 +104,7 @@ export default function EditBlog() {
     <div className="max-w-3xl mx-auto mt-10 p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-4">Edit Blog</h1>
       <form onSubmit={handleUpdate} className="flex flex-col gap-4">
+        {/* Title */}
         <input
           type="text"
           placeholder="Title"
@@ -134,7 +146,29 @@ export default function EditBlog() {
             </select>
           )}
 
-        {/* Rich Text Toolbar */}
+        {/* Existing Image */}
+        <div className="flex flex-col gap-2">
+          {existingImage ? (
+            <img
+              src={existingImage}
+              alt="Blog"
+              className="w-48 h-48 object-cover rounded"
+            />
+          ) : (
+            <div className="w-48 h-48 flex items-center justify-center border rounded text-gray-400">
+              No image
+            </div>
+          )}
+        </div>
+
+        {/* New Image Upload */}
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setImageFile(e.target.files[0])}
+        />
+
+        {/* Editor Toolbar */}
         <div className="flex gap-2 flex-wrap mb-2">
           <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className="px-2 py-1 border rounded">Bold</button>
           <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className="px-2 py-1 border rounded">Italic</button>
@@ -160,8 +194,14 @@ export default function EditBlog() {
           <input type="color" onChange={(e) => editor.chain().focus().setColor(e.target.value).run()} className="w-10 h-8 p-0 border rounded"/>
         </div>
 
+        {/* Editor */}
         <EditorContent editor={editor} />
-        <button type="submit" className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">
+
+        {/* Submit */}
+        <button
+          type="submit"
+          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
+        >
           Update Blog
         </button>
       </form>

@@ -1,18 +1,39 @@
 import Blog from "../models/Blog.js";
 import User from "../models/User.js";
+import cloudinary from "../config/cloudinary.js";
 
 // Create Blog
 export const createBlog = async (req, res) => {
   try {
     const { title, content, category } = req.body;
+    let imageUrl = "";
+
+    if (req.file) {
+      const buffer = req.file.buffer;
+
+      imageUrl = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "blogs" },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result.secure_url);
+          }
+        );
+        stream.end(buffer);
+      });
+    }
+
     const blog = await Blog.create({
       title,
       content,
       category,
       author: req.user._id,
+      image: imageUrl, // ✅ save Cloudinary URL
     });
+
     res.status(201).json(blog);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -65,13 +86,31 @@ export const updateBlog = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
 
     const { title, content, category } = req.body;
+
     blog.title = title || blog.title;
     blog.content = content || blog.content;
     blog.category = category || blog.category;
 
+    // ✅ Handle new image upload if file exists
+    if (req.file) {
+      const buffer = req.file.buffer;
+      const imageUrl = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "blogs" },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result.secure_url);
+          }
+        );
+        stream.end(buffer);
+      });
+      blog.image = imageUrl; // Save new Cloudinary URL
+    }
+
     await blog.save();
     res.json(blog);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };

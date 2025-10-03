@@ -30,7 +30,7 @@ export default function BlogList({
   }
 
   return (
-    <div className="grid md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 gap-6">
       {blogs.map((b) => (
         <BlogItem
           key={b._id}

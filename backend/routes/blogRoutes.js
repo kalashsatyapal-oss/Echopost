@@ -1,4 +1,5 @@
 import express from "express";
+import upload from "../middleware/upload.js";
 import {
   createBlog,
   getBlogs,
@@ -13,11 +14,11 @@ const router = express.Router();
 
 router.route("/")
   .get(getBlogs)
-  .post(protect, createBlog);
+  .post(protect, upload.single("image"), createBlog);
 
 router.route("/:id")
   .get(getBlog)
-  .put(protect, updateBlog)
+  .put(protect, upload.single("image"), updateBlog)
   .delete(protect, deleteBlog);
 
 router.put("/like/:id", protect, toggleLike);
