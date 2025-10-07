@@ -3,6 +3,8 @@ import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
+import User from "./models/User.js";
+import bcrypt from "bcryptjs";
 
 // Load environment variables at the very top
 dotenv.config();
@@ -17,6 +19,25 @@ import userRoutes from "./routes/userRoutes.js";
 import cloudinary from "./config/cloudinary.js";
 
 const app = express();
+
+const createSuperAdmin = async () => {
+  const superAdminEmail = process.env.SUPERADMIN_EMAIL;
+  const superAdminPassword = process.env.SUPERADMIN_PASSWORD;
+
+  if (!superAdminEmail || !superAdminPassword) return;
+
+  const existing = await User.findOne({ email: superAdminEmail });
+  if (!existing) {
+    const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
+    await User.create({
+      name: "SuperAdmin",
+      email: superAdminEmail,
+      password: hashedPassword,
+      role: "superadmin",
+    });
+    console.log("✅ SuperAdmin created");
+  }
+};
 
 // Middleware
 app.use(cors());
@@ -38,8 +59,11 @@ const PORT = process.env.PORT || 5000;
 
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => {
+  .then(async() => {
     console.log("MongoDB connected");
+    await createSuperAdmin(); // 🔥 ensures superadmin exists
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
   .catch((err) => console.error("MongoDB connection error:", err));
+
+
