@@ -14,6 +14,8 @@ import authRoutes from "./routes/authRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import adminRequestRoutes from "./routes/adminRequestRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 // Import Cloudinary config (make sure config/cloudinary.js uses process.env)
 import cloudinary from "./config/cloudinary.js";
@@ -53,6 +55,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/admin-requests", adminRequestRoutes);
+// after app.use("/api/blogs", blogRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Connect MongoDB and start server
 const PORT = process.env.PORT || 5000;

@@ -9,6 +9,8 @@ import CreateBlog from "./pages/CreateBlog.jsx";
 import EditBlog from "./pages/EditBlog.jsx";
 import Profile from "./pages/Profile.jsx";
 import MyBlogs from "./pages/MyBlogs.jsx"; // ✅ new page
+import AdminDashboard from "./pages/AdminDashboard";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 
 function App() {
   return (
@@ -53,6 +55,23 @@ function App() {
         }
       />
       <Route path="/my-blogs" element={<MyBlogs />} />
+      <Route
+        path="/admin-dashboard"
+        element={
+          <ProtectedRoute allowedRoles={["admin", "superadmin"]}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/superadmin-dashboard"
+        element={
+          <ProtectedRoute allowedRoles={["superadmin"]}>
+            <SuperAdminDashboard />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }

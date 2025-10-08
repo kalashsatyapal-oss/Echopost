@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
+import { useSelector } from "react-redux";
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen, handleLogout }) {
+  const user = useSelector((state) => state.auth.user); // ✅ get user from Redux
+
   return (
     <div
       className={`fixed inset-y-0 left-0 w-64 bg-white border-r shadow-lg transform ${
@@ -21,6 +24,23 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, handleLogout }) {
         <Link to="/profile" className="px-3 py-2 rounded hover:bg-gray-100">
           Profile
         </Link>
+        {/* ✅ Visible to both admin and superadmin */}
+        {(user?.role === "admin" || user?.role === "superadmin") && (
+          <Link
+            to="/admin-dashboard"
+            className="px-3 py-2 rounded hover:bg-gray-100 text-purple-600 font-semibold"
+          >
+            Admin Dashboard
+          </Link>
+        )}
+        {user?.role === "superadmin" && (
+          <Link
+            to="/superadmin-dashboard"
+            className="px-3 py-2 rounded hover:bg-gray-100 text-blue-500 font-semibold"
+          >
+            SuperAdmin Dashboard
+          </Link>
+        )}
         <button
           onClick={handleLogout}
           className="px-3 py-2 rounded hover:bg-gray-100 text-left text-red-500"

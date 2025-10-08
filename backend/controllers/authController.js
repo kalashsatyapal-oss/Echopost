@@ -33,6 +33,7 @@ export const register = async (req, res) => {
         name: newUser.name,
         email: newUser.email,
         profileImage: newUser.profileImage || null,
+        role: newUser.role, // ✅ include role
       },
     });
   } catch (err) {
@@ -48,10 +49,22 @@ export const login = async (req, res) => {
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+    if (!isMatch)
+      return res.status(400).json({ message: "Invalid credentials" });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
-    res.json({ user, token }); // role is included in user
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profileImage: user.profileImage || null,
+        role: user.role, // ✅ include role
+      },
+      token,
+    }); // role is included in user
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }

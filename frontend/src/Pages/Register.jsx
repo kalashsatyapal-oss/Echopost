@@ -2,11 +2,14 @@ import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { register } from "../redux/authSlice.js";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import toast from "react-hot-toast";
 
 export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("user"); // default user
   const [successMessage, setSuccessMessage] = useState("");
 
   const dispatch = useDispatch();
@@ -16,18 +19,29 @@ export default function Register() {
     e.preventDefault();
 
     try {
-      const result = await dispatch(register({ name, email, password }));
-
-      if (result.meta.requestStatus === "fulfilled") {
-        setSuccessMessage("✅ Registered successfully! Redirecting to login...");
-        setTimeout(() => {
-          navigate("/login"); // redirect to login after 2s
-        }, 2000);
+      if (role === "admin") {
+        // create admin request
+        const res = await axios.post("http://localhost:5000/api/admin-requests", {
+          name,
+          email,
+          password,
+        });
+        setSuccessMessage("✅ Admin request submitted successfully!");
+        toast.success("Admin request sent!");
       } else {
-        setSuccessMessage("❌ Registration failed. Please try again.");
+        // normal registration
+        const result = await dispatch(register({ name, email, password }));
+        if (result.meta.requestStatus === "fulfilled") {
+          setSuccessMessage("✅ Registered successfully! Redirecting to login...");
+          setTimeout(() => navigate("/login"), 2000);
+        } else {
+          setSuccessMessage("❌ Registration failed. Please try again.");
+        }
       }
-    } catch (error) {
+    } catch (err) {
+      console.error(err);
       setSuccessMessage("❌ Something went wrong.");
+      toast.error("Error submitting request.");
     }
   };
 
@@ -68,6 +82,15 @@ export default function Register() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+
+        <select
+          className="w-full p-2 mb-4 border rounded"
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+        >
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+        </select>
 
         <button className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">
           Register
