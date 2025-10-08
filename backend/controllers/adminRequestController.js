@@ -1,6 +1,16 @@
 import AdminRequest from "../models/AdminRequest.js";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+import nodemailer from "nodemailer";
+
+// ✅ Nodemailer transporter
+const transporter = nodemailer.createTransport({
+  service: "Gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+});
 
 // Create admin request
 export const createAdminRequest = async (req, res) => {
@@ -18,6 +28,14 @@ export const createAdminRequest = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newRequest = await AdminRequest.create({ name, email, password: hashedPassword });
+
+    // ✅ Notify SuperAdmin by email
+    transporter.sendMail({
+      from: `"EchoPost Admin Requests" <${process.env.EMAIL_USER}>`,
+      to: process.env.SUPERADMIN_EMAIL,
+      subject: "New Admin Request Received",
+      text: `Hello SuperAdmin,\n\nA new admin request has been submitted:\n\nName: ${name}\nEmail: ${email}\n\nCheck the dashboard to accept/reject this request.`,
+    }).catch(err => console.error("SuperAdmin email failed:", err));
 
     res.status(201).json({ message: "Admin request created", request: newRequest });
   } catch (err) {
@@ -47,6 +65,7 @@ export const updateAdminRequest = async (req, res) => {
   request.status = status;
   await request.save();
 
+  // ✅ If accepted, create user
   if (status === "accepted") {
     await User.create({
       name: request.name,
@@ -55,6 +74,16 @@ export const updateAdminRequest = async (req, res) => {
       role: "admin",
     });
   }
+
+  // ✅ Notify requester by email
+  transporter.sendMail({
+    from: `"EchoPost Admin Requests" <${process.env.EMAIL_USER}>`,
+    to: request.email,
+    subject: `Your Admin Request is ${status}`,
+    text: `Hello ${request.name},\n\nYour admin request has been ${status}.\n\n${
+      status === "accepted" ? "You can now login as an admin." : ""
+    }`,
+  }).catch(err => console.error("Requester email failed:", err));
 
   res.json(request);
 };

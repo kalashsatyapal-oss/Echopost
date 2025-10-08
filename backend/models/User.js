@@ -7,6 +7,8 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     profileImage: { type: String },
     role: { type: String, enum: ["user", "admin", "superadmin"], default: "user" },
+    isBlocked: { type: Boolean, default: false },
+    suspendedUntil: { type: Date, default: null },
   },
   { timestamps: true }
 );
