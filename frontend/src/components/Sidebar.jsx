@@ -24,6 +24,12 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, handleLogout }) {
         <Link to="/profile" className="px-3 py-2 rounded hover:bg-gray-100">
           Profile
         </Link>
+        <Link
+          to="/guidelines"
+          className="px-3 py-2 rounded hover:bg-gray-100 text-gray-700"
+        >
+          Guidelines
+        </Link>
         {/* ✅ Visible to both admin and superadmin */}
         {(user?.role === "admin" || user?.role === "superadmin") && (
           <Link

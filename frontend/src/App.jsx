@@ -11,6 +11,7 @@ import Profile from "./pages/Profile.jsx";
 import MyBlogs from "./pages/MyBlogs.jsx"; // ✅ new page
 import AdminDashboard from "./pages/AdminDashboard";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
+import Guidelines from "./pages/Guidelines";
 
 function App() {
   return (
@@ -72,6 +73,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/guidelines" element={<Guidelines />} />
     </Routes>
   );
 }
