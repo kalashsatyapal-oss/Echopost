@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import debounce from "lodash.debounce";
 
 import Sidebar from "../components/Sidebar.jsx";
 import ProfileMenu from "../components/ProfileMenu.jsx";
 import AllBlogList from "../components/AllBlogList.jsx";
+import logo from "../assets/logo.png";
 
 export default function Dashboard() {
   const [blogs, setBlogs] = useState([]);
@@ -16,7 +18,6 @@ export default function Dashboard() {
 
   const navigate = useNavigate();
 
-  // Fetch current user
   const fetchUser = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -30,14 +31,12 @@ export default function Dashboard() {
     }
   };
 
-  // Fetch blogs
-  const fetchBlogs = async () => {
+  const fetchBlogs = async (searchTerm = search, selectedCategory = category) => {
     try {
       const res = await axios.get("http://localhost:5000/api/blogs", {
-        params: { search, category },
+        params: { search: searchTerm, category: selectedCategory },
       });
 
-      // Convert likes to strings to match currentUserId
       const blogsWithStringLikes = res.data.map((b) => ({
         ...b,
         likes: b.likes.map((id) => id.toString()),
@@ -45,7 +44,6 @@ export default function Dashboard() {
 
       setBlogs(blogsWithStringLikes);
 
-      // Extract unique categories
       const uniqueCategories = [
         ...new Set(res.data.map((b) => b.category).filter(Boolean)),
       ];
@@ -55,26 +53,30 @@ export default function Dashboard() {
     }
   };
 
+  const debouncedFetchBlogs = useCallback(debounce(fetchBlogs, 500), [category]);
+
   useEffect(() => {
     fetchUser();
   }, []);
 
   useEffect(() => {
-    if (user) fetchBlogs();
-  }, [search, category, user]);
+    if (user) {
+      debouncedFetchBlogs(search, category);
+    }
+    return debouncedFetchBlogs.cancel;
+  }, [search, category, user, debouncedFetchBlogs]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/");
   };
 
-  // Simplified: Cloudinary URL
   const getProfileImage = () => {
     return user?.profileImage || "/default-avatar.png";
   };
 
   return (
-    <div className="flex">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-indigo-200 font-sans text-gray-800 flex">
       {/* Sidebar */}
       <Sidebar
         sidebarOpen={sidebarOpen}
@@ -90,10 +92,10 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Main Content */}
-      <div className="flex-1 md:ml-64 p-6">
+      {/* Main Section */}
+      <div className="flex flex-col flex-1 md:ml-64">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 sticky top-0 bg-white z-10 py-2 border-b">
+        <div className="flex items-center justify-between bg-white bg-opacity-90 py-3 px-6 shadow border-b z-10">
           <div className="flex items-center gap-4">
             <button
               className="md:hidden p-2 rounded bg-gray-100"
@@ -101,7 +103,16 @@ export default function Dashboard() {
             >
               ☰
             </button>
-            <h1 className="text-2xl font-bold text-gray-800">📖 My Dashboard</h1>
+            <div className="flex items-center gap-3">
+              <img
+                src={logo}
+                alt="EchoPost Logo"
+                className="h-8 w-8 object-contain"
+              />
+              <h1 className="text-2xl font-bold text-indigo-700 tracking-wide">
+                EchoPost Dashboard
+              </h1>
+            </div>
           </div>
 
           <ProfileMenu
@@ -111,17 +122,17 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Search + Filter */}
-        <div className="flex flex-col md:flex-row items-center gap-4 mb-8 bg-gray-50 p-4 rounded-lg shadow-sm">
+        {/* Search Bar */}
+        <div className="bg-white bg-opacity-90 px-6 py-4 shadow border-b z-10 flex flex-col md:flex-row items-center gap-3">
           <input
             type="text"
-            placeholder="🔍 Search blogs..."
-            className="flex-grow p-2 border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+            placeholder="🔍 Search blogs by title or author..."
+            className="flex-grow p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           <select
-            className="p-2 border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+            className="p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           >
@@ -134,8 +145,17 @@ export default function Dashboard() {
           </select>
         </div>
 
-        {/* Blog List */}
-        <AllBlogList blogs={blogs} currentUserId={user?._id} refreshBlogs={fetchBlogs} />
+        {/* Content */}
+        <div className="px-4 py-6 md:px-8">
+          {/* Blog List */}
+          <div className="space-y-6">
+            <AllBlogList
+              blogs={blogs}
+              currentUserId={user?._id}
+              refreshBlogs={() => fetchBlogs(search, category)}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

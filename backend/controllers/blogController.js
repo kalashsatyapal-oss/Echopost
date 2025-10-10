@@ -40,14 +40,28 @@ export const createBlog = async (req, res) => {
 
 // Get All Blogs with Search & Category Filter
 // Get all blogs with search + category
+// Get All Blogs with Search & Category Filter
 export const getBlogs = async (req, res) => {
   try {
     const { search, category } = req.query;
-    const query = {};
+    let query = {};
 
     if (search) {
-      query.title = { $regex: search, $options: "i" };
+      // Search by title or author name
+      const authors = await User.find({
+        name: { $regex: search, $options: "i" },
+      }).select("_id");
+
+      const authorIds = authors.map((a) => a._id);
+
+      query = {
+        $or: [
+          { title: { $regex: search, $options: "i" } },
+          { author: { $in: authorIds } },
+        ],
+      };
     }
+
     if (category) {
       query.category = category;
     }
@@ -58,6 +72,7 @@ export const getBlogs = async (req, res) => {
 
     res.json(blogs);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };

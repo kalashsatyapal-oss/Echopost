@@ -3,12 +3,14 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import ManageUsers from "../components/ManageUsers";
 import EditGuidelines from "../components/EditGuidelines";
+import { useNavigate } from "react-router-dom";
 
 export default function SuperAdminDashboard() {
   const [requests, setRequests] = useState([]);
   const [stats, setStats] = useState({ totalUsers: 0, totalBlogs: 0 });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const navigate = useNavigate();
 
   const fetchRequests = async () => {
     try {
@@ -70,13 +72,21 @@ export default function SuperAdminDashboard() {
     <div className="bg-gray-50 min-h-screen">
       {/* Main Header */}
       <header className="bg-white shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <h1 className="text-4xl font-extrabold text-purple-700 tracking-tight">
-            EchoPost
-          </h1>
-          <p className="text-lg text-gray-600 mt-1 font-medium">
-            SuperAdmin Dashboard
-          </p>
+        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-extrabold text-purple-700 tracking-tight">
+              EchoPost
+            </h1>
+            <p className="text-lg text-gray-600 mt-1 font-medium">
+              SuperAdmin Dashboard
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+          >
+            🏠 Go to Dashboard
+          </button>
         </div>
 
         {/* Navbar below header */}

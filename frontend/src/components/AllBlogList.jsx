@@ -11,7 +11,7 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingText, setEditingText] = useState({});
   const [commentCounts, setCommentCounts] = useState({});
-  const [expandedContent, setExpandedContent] = useState({}); // blogId => bool
+  const [expandedContent, setExpandedContent] = useState({});
 
   useEffect(() => {
     if (blogs && currentUserId) {
@@ -20,7 +20,6 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
         .map((b) => b._id);
       setLikedBlogIds(liked);
 
-      // Initialize comment counts
       blogs.forEach(async (b) => {
         try {
           const res = await axios.get(
@@ -39,9 +38,7 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
       await axios.put(
         `http://localhost:5000/api/blogs/like/${blogId}`,
         {},
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
 
       setActiveAnimations((prev) => ({ ...prev, [blogId]: true }));
@@ -60,15 +57,6 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
     } catch (err) {
       console.error("Failed to like/unlike blog:", err);
     }
-  };
-
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
   };
 
   const toggleComments = async (blogId) => {
@@ -96,9 +84,7 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
       const res = await axios.post(
         `http://localhost:5000/api/comments/${blogId}`,
         { text },
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
 
       setCommentsData((prev) => ({
@@ -127,16 +113,13 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
       const res = await axios.put(
         `http://localhost:5000/api/comments/${commentId}`,
         { text },
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
       setCommentsData((prev) => ({
         ...prev,
         [blogId]: prev[blogId].map((c) => (c._id === commentId ? res.data : c)),
       }));
       setEditingCommentId(null);
-      setEditingText((prev) => ({ ...prev, [commentId]: "" }));
     } catch (err) {
       console.error(err);
     }
@@ -161,20 +144,22 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
   };
 
   const getProfileImage = (profileImage) => {
-    if (!profileImage) return null;
-    const base64Pattern = /^[A-Za-z0-9+/]+={0,2}$/;
-    if (base64Pattern.test(profileImage))
-      return `data:image/png;base64,${profileImage}`;
-    if (
-      profileImage.startsWith("data:image") ||
-      profileImage.startsWith("http")
-    )
-      return profileImage;
+    if (!profileImage) return "/default-avatar.png";
+    if (profileImage.startsWith("http")) return profileImage;
     return `http://localhost:5000${profileImage}`;
   };
 
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   return (
-    <div className="grid md:grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 transition-all">
       {blogs.length > 0 ? (
         blogs.map((b) => {
           const isLiked = likedBlogIds.includes(b._id);
@@ -186,21 +171,23 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
           return (
             <div
               key={b._id}
-              className="p-5 bg-white rounded-lg shadow hover:shadow-xl transition border relative overflow-hidden"
+              className="p-3 bg-white rounded-lg shadow-md hover:shadow-lg border border-gray-200 flex flex-col"
             >
               {/* Author Info */}
-              <div className="flex items-center gap-3 mb-2">
-                {b.author?.profileImage && (
-                  <img
-                    src={getProfileImage(b.author.profileImage)}
-                    alt={b.author.name}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                )}
-                <span className="font-semibold text-gray-700">
-                  {b.author?.name || "Unknown Author"}
-                </span>
+              <div className="flex items-center gap-2 mb-2">
+                <img
+                  src={getProfileImage(b.author?.profileImage)}
+                  alt={b.author?.name || "Author"}
+                  className="w-8 h-8 rounded-full object-cover border"
+                />
+                <div>
+                  <p className="font-semibold text-gray-700 text-sm">
+                    {b.author?.name || "Unknown Author"}
+                  </p>
+                  <p className="text-xs text-gray-500">{formatDate(b.createdAt)}</p>
+                </div>
               </div>
+
               {/* Blog Image */}
               {b.image && (
                 <img
@@ -210,72 +197,59 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
                       : `http://localhost:5000${b.image}`
                   }
                   alt={b.title}
-                  className="w-full h-64 object-cover rounded mb-3"
+                  className="w-full h-32 object-cover rounded mb-2"
                 />
               )}
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                <Link to={`/blog/${b._id}`} className="hover:text-blue-600">
-                  {b.title}
-                </Link>
+
+              {/* Blog Title */}
+              <h2 className="text-md font-semibold text-gray-800 mb-1 line-clamp-2 hover:text-blue-600 transition">
+                <Link to={`/blog/${b._id}`}>{b.title}</Link>
               </h2>
 
-              <div className="flex justify-between mb-2">
-                <p className="text-sm text-blue-600 font-medium">
-                  {b.category || "Uncategorized"}
-                </p>
-                <p className="text-sm text-gray-500">
-                  Published: {formatDate(b.createdAt)}
-                </p>
-              </div>
-
-              {/* Blog content with Read More / Read Less */}
-              <div className="text-gray-700 mb-3">
+              {/* Blog Content */}
+              <div className="text-gray-700 mb-2 flex-1 text-sm">
                 <p
-                  className={`${!isExpanded ? "line-clamp-3" : ""}`}
+                  className={`${!isExpanded ? "line-clamp-2" : ""}`}
                   dangerouslySetInnerHTML={{ __html: b.content }}
                 />
-                {b.content.length > 200 && (
+                {b.content.length > 120 && (
                   <button
                     onClick={() => toggleContent(b._id)}
-                    className="text-blue-500 font-semibold mt-1"
+                    className="text-blue-500 font-medium mt-1 hover:underline text-sm"
                   >
                     {isExpanded ? "Read Less" : "Read More"}
                   </button>
                 )}
               </div>
 
-              <div className="flex justify-between items-center text-sm text-gray-600 relative">
+              {/* Like and Comments */}
+              <div className="flex justify-between items-center text-xs text-gray-600 mt-auto">
                 <button
                   onClick={() => toggleLike(b._id)}
-                  className={`relative flex items-center gap-1 font-semibold transition-transform duration-150 ${
-                    isLiked ? "text-blue-500 scale-110" : "text-gray-600"
+                  className={`flex items-center gap-1 font-semibold transition-transform duration-150 ${
+                    isLiked ? "text-blue-500 scale-105" : "text-gray-600"
                   }`}
                 >
                   👍 {b.likes?.length || 0}
                   {isAnimating && (
-                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-2">
-                      <span className="animate-fly-thumbs text-blue-500 text-lg">
-                        👍
-                      </span>
-                      {[...Array(6)].map((_, i) => (
-                        <span
-                          key={i}
-                          className={`absolute w-1 h-1 bg-blue-400 rounded-full animate-particle-${i}`}
-                        />
-                      ))}
-                    </div>
+                    <span className="animate-fly-thumbs absolute text-blue-500 text-sm">
+                      👍
+                    </span>
                   )}
                 </button>
 
-                <button onClick={() => toggleComments(b._id)}>
+                <button
+                  onClick={() => toggleComments(b._id)}
+                  className="hover:text-blue-500"
+                >
                   💬 {commentCount} Comments
                 </button>
               </div>
 
-              {/* Inline comments */}
+              {/* Comments Section */}
               {openComments[b._id] && (
-                <div className="mt-3 border-t pt-3">
-                  <div className="flex gap-2 mb-2">
+                <div className="mt-2 border-t pt-2 space-y-1 text-xs">
+                  <div className="flex gap-1 mb-1">
                     <input
                       type="text"
                       placeholder="Write a comment..."
@@ -286,84 +260,78 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
                           [b._id]: e.target.value,
                         }))
                       }
-                      className="flex-grow p-2 border rounded shadow-sm"
+                      className="flex-grow p-1 border rounded focus:ring-1 focus:ring-blue-400 outline-none text-xs"
                     />
                     <button
                       onClick={() => addComment(b._id)}
-                      className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                      className="px-2 py-0.5 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs"
                     >
                       Comment
                     </button>
                   </div>
 
                   {comments.map((c) => (
-                    <div
-                      key={c._id}
-                      className="mb-2 p-2 bg-gray-50 rounded shadow-sm flex gap-2"
-                    >
-                      {c.author?.profileImage && (
-                        <img
-                          src={getProfileImage(c.author.profileImage)}
-                          alt={c.author.name}
-                          className="w-6 h-6 rounded-full object-cover"
-                        />
-                      )}
-                      <div className="flex-1">
-                        <div className="flex justify-between items-center">
-                          <span className="font-semibold text-gray-700">
-                            {c.author.name}
-                          </span>
-                          {c.author._id === currentUserId && (
-                            <div className="flex gap-2 text-xs text-gray-500">
-                              {editingCommentId === c._id ? (
-                                <>
-                                  <button
-                                    onClick={() => updateComment(c._id, b._id)}
-                                    className="hover:text-green-600"
-                                  >
-                                    Save
-                                  </button>
-                                  <button
-                                    onClick={() => setEditingCommentId(null)}
-                                    className="hover:text-red-600"
-                                  >
-                                    Cancel
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => editComment(c._id, c.text)}
-                                    className="hover:text-blue-600"
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={() => deleteComment(c._id, b._id)}
-                                    className="hover:text-red-600"
-                                  >
-                                    Delete
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        {editingCommentId === c._id ? (
-                          <input
-                            value={editingText[c._id] || ""}
-                            onChange={(e) =>
-                              setEditingText((prev) => ({
-                                ...prev,
-                                [c._id]: e.target.value,
-                              }))
-                            }
-                            className="w-full mt-1 p-1 border rounded"
+                    <div key={c._id} className="bg-gray-50 p-1 rounded shadow-sm">
+                      <div className="flex justify-between items-start">
+                        <div className="flex gap-1 items-center">
+                          <img
+                            src={getProfileImage(c.author?.profileImage)}
+                            alt={c.author?.name}
+                            className="w-5 h-5 rounded-full object-cover"
                           />
-                        ) : (
-                          <p className="mt-1 text-gray-700">{c.text}</p>
+                          <p className="font-medium text-gray-700 text-xs">{c.author?.name}</p>
+                        </div>
+                        {c.author._id === currentUserId && (
+                          <div className="flex gap-1 text-xs text-gray-500">
+                            {editingCommentId === c._id ? (
+                              <>
+                                <button
+                                  onClick={() => updateComment(c._id, b._id)}
+                                  className="hover:text-green-600"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => setEditingCommentId(null)}
+                                  className="hover:text-red-600"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => editComment(c._id, c.text)}
+                                  className="hover:text-blue-600"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => deleteComment(c._id, b._id)}
+                                  className="hover:text-red-600"
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
+                          </div>
                         )}
                       </div>
+
+                      {editingCommentId === c._id ? (
+                        <input
+                          value={editingText[c._id] || ""}
+                          onChange={(e) =>
+                            setEditingText((prev) => ({
+                              ...prev,
+                              [c._id]: e.target.value,
+                            }))
+                          }
+                          className="w-full mt-1 p-1 border rounded text-xs"
+                        />
+                      ) : (
+                        <p className="mt-1 text-gray-700 text-xs">{c.text}</p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -372,27 +340,10 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
           );
         })
       ) : (
-        <div className="col-span-full text-center text-gray-500 py-10 bg-gray-50 rounded-lg shadow-inner">
+        <div className="col-span-full text-center text-gray-500 py-10 bg-gray-50 rounded-lg shadow-inner text-sm">
           No blogs found. Start by creating one!
         </div>
       )}
-
-      <style>
-        {`
-          @keyframes flyThumbs {0% { transform: translateY(0) scale(1); opacity:1;} 50% { transform: translateY(-20px) scale(1.3); opacity:1;} 100% { transform: translateY(-40px) scale(0); opacity:0; }}
-          .animate-fly-thumbs { animation: flyThumbs 2.5s ease-out forwards; }
-          ${[...Array(6)]
-            .map(
-              (_, i) => `
-            @keyframes particle-${i} {0%{transform:translate(0,0);opacity:1;}100%{transform:translate(${
-                Math.random() * 40 - 20
-              }px,${Math.random() * -40}px);opacity:0;}}
-            .animate-particle-${i}{animation:particle-${i} 0.8s ease-out forwards;}
-          `
-            )
-            .join("")}
-        `}
-      </style>
     </div>
   );
 }
