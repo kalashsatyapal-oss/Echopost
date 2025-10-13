@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import axios from "axios";
+import { FaArrowLeft, FaThumbsUp, FaCommentDots } from "react-icons/fa";
+import logo from "../assets/logo.png";
 
 export default function BlogDetail() {
   const { id } = useParams();
@@ -15,6 +17,7 @@ export default function BlogDetail() {
     null;
 
   const [blog, setBlog] = useState(null);
+  const [blogAuthor, setBlogAuthor] = useState(null);
   const [comments, setComments] = useState([]);
   const [newCommentText, setNewCommentText] = useState("");
   const [editingCommentId, setEditingCommentId] = useState(null);
@@ -42,19 +45,38 @@ export default function BlogDetail() {
     );
   };
 
+  // Fetch blog + author + comments
   useEffect(() => {
     const fetchData = async () => {
       try {
         const blogRes = await axios.get(`http://localhost:5000/api/blogs/${id}`);
-        setBlog(blogRes.data || null);
-        setIsLiked(Boolean(blogRes.data?.likes?.includes(currentUserId)));
+        const blogData = blogRes.data;
+        setBlog(blogData);
+        setIsLiked(Boolean(blogData?.likes?.includes(currentUserId)));
 
-        const commentsRes = await axios.get(`http://localhost:5000/api/comments/${id}`);
+        // ✅ Handle author data properly
+        if (blogData?.author) {
+          if (typeof blogData.author === "string") {
+            // Fetch full author details if it's just an ID
+            const authorRes = await axios.get(
+              `http://localhost:5000/api/users/${blogData.author}`
+            );
+            setBlogAuthor(authorRes.data);
+          } else {
+            setBlogAuthor(blogData.author);
+          }
+        }
+
+        // Fetch comments
+        const commentsRes = await axios.get(
+          `http://localhost:5000/api/comments/${id}`
+        );
         setComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
       } catch (err) {
         console.error("Failed to fetch blog/comments:", err);
       }
     };
+
     fetchData();
   }, [id, currentUserId]);
 
@@ -124,132 +146,203 @@ export default function BlogDetail() {
     }
   };
 
-  if (!blog) return <p className="text-center mt-10">Loading...</p>;
+  if (!blog)
+    return (
+      <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-blue-50 via-purple-100 to-indigo-200 text-indigo-700 font-semibold text-xl">
+        Loading Blog...
+      </div>
+    );
+
+  const author = blogAuthor || {};
 
   return (
-    <div className="w-[calc(100%-100px)] mx-[50px] mt-10 px-6 py-8 bg-white rounded-2xl shadow-xl">
-      {/* Author */}
-      <div className="flex items-center gap-4 mb-6">
-        <img
-          src={getImageSrc(blog.author?.profileImage)}
-          alt={blog.author?.name || "Author"}
-          className="w-14 h-14 rounded-full object-cover border"
-        />
-        <div>
-          <div className="text-lg font-semibold text-gray-800">{blog.author?.name || "Unknown Author"}</div>
-          <div className="text-xs text-gray-500">{new Date(blog.createdAt).toLocaleString()}</div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-indigo-200 text-gray-800 font-sans">
+      {/* Header */}
+      <header className="flex justify-between items-center p-6 shadow-sm">
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="EchoPost Logo" className="h-10 w-10 object-contain" />
+          <h1 className="text-2xl font-extrabold text-indigo-700">EchoPost</h1>
         </div>
-      </div>
+        <Link
+          to="/"
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-500 transition"
+        >
+          <FaArrowLeft /> Back
+        </Link>
+      </header>
 
-      {/* Blog Image */}
-      {blog.image && (
-        <img
-          src={getImageSrc(blog.image)}
-          alt={blog.title}
-          className="w-full max-h-96 object-cover rounded-2xl shadow-lg mb-6"
+      {/* Blog Card */}
+      <div className="max-w-4xl mx-auto bg-white bg-opacity-90 shadow-xl rounded-2xl p-8 my-10 backdrop-blur-sm">
+        {/* Author */}
+        <div className="flex items-center gap-4 mb-6">
+          <img
+            src={getImageSrc(author.profileImage)}
+            alt={author.name || "Author"}
+            className="w-14 h-14 rounded-full object-cover border-2 border-indigo-300"
+          />
+          <div>
+            <div className="text-lg font-semibold text-gray-800">
+              {author.name || "Unknown Author"}
+            </div>
+            <div className="text-xs text-gray-500">
+              {new Date(blog.createdAt).toLocaleString()}
+            </div>
+          </div>
+        </div>
+
+        {/* Blog Image */}
+        {blog.image && (
+          <img
+            src={getImageSrc(blog.image)}
+            alt={blog.title}
+            className="w-full max-h-96 object-cover rounded-2xl shadow-md mb-6"
+          />
+        )}
+
+        <h1 className="text-4xl font-extrabold text-indigo-700 mb-3">{blog.title}</h1>
+        <p className="text-sm text-teal-600 mb-5 font-medium">{blog.category}</p>
+
+        <div
+          className="prose max-w-full text-gray-700 mb-8"
+          dangerouslySetInnerHTML={{ __html: blog.content }}
         />
-      )}
 
-      <h1 className="text-4xl font-bold mb-3">{blog.title}</h1>
-      <p className="text-sm text-gray-500 mb-5">{blog.category}</p>
-      <div className="prose max-w-full mb-8" dangerouslySetInnerHTML={{ __html: blog.content }} />
+        {/* Likes and Comments */}
+        <div className="flex items-center gap-6 mb-8">
+          <button
+            onClick={toggleLike}
+            className={`relative flex items-center gap-2 font-semibold transition-transform duration-150 hover:scale-110 ${
+              isLiked ? "text-indigo-600" : "text-gray-600"
+            }`}
+          >
+            <FaThumbsUp /> {Array.isArray(blog.likes) ? blog.likes.length : 0}
+            {likeAnimating && (
+              <span className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-2 animate-fly-thumbs text-indigo-600 text-lg">
+                👍
+              </span>
+            )}
+          </button>
 
-      {/* Like & Comment */}
-      <div className="flex items-center gap-6 mb-6">
-        <button
-          onClick={toggleLike}
-          className={`relative flex items-center gap-2 font-semibold transition-transform duration-150 hover:scale-110 ${
-            isLiked ? "text-blue-500" : "text-gray-600"
-          }`}
-        >
-          👍 {Array.isArray(blog.likes) ? blog.likes.length : 0}
-          {likeAnimating && (
-            <span className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-2 animate-fly-thumbs text-blue-500 text-lg">👍</span>
-          )}
-        </button>
+          <button
+            onClick={() => document.getElementById("commentInput")?.focus()}
+            className="flex items-center gap-2 text-gray-600 font-semibold hover:text-teal-600 transition"
+          >
+            <FaCommentDots /> {comments.length} Comments
+          </button>
+        </div>
 
-        <button
-          onClick={() => document.getElementById("commentInput")?.focus()}
-          className="flex items-center gap-2 text-gray-600 font-semibold hover:text-green-600"
-        >
-          💬 {comments.length} Comments
-        </button>
-      </div>
+        {/* Comment Input */}
+        <div className="flex mb-6 gap-2">
+          <input
+            id="commentInput"
+            type="text"
+            placeholder="Add a comment..."
+            className="flex-grow p-3 border rounded-l-lg focus:ring-2 focus:ring-teal-400 outline-none bg-white bg-opacity-70"
+            value={newCommentText}
+            onChange={(e) => setNewCommentText(e.target.value)}
+          />
+          <button
+            onClick={addComment}
+            className="px-5 bg-gradient-to-r from-indigo-600 to-teal-500 text-white font-semibold rounded-r-lg transition hover:scale-105"
+          >
+            Post
+          </button>
+        </div>
 
-      {/* Comment Input */}
-      <div className="flex mb-6 gap-2">
-        <input
-          id="commentInput"
-          type="text"
-          placeholder="Add a comment..."
-          className="flex-grow p-3 border rounded-l-lg focus:ring-2 focus:ring-green-400 outline-none"
-          value={newCommentText}
-          onChange={(e) => setNewCommentText(e.target.value)}
-        />
-        <button
-          onClick={addComment}
-          className="px-5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-r-lg transition"
-        >
-          Post
-        </button>
-      </div>
-
-      {/* Comments */}
-      <ul className="space-y-4">
-        {comments.map((c) => {
-          const authorId = getAuthorId(c.author);
-          const isAuthor = Boolean(authorId && currentUserId && authorId === currentUserId);
-
-          return (
-            <li
-              key={c._id}
-              className={`p-4 border rounded-xl bg-gray-50 ${
-                editingCommentId === c._id ? "border-green-400 bg-green-50" : ""
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={getImageSrc(c.author?.profileImage)}
-                    alt={c.author?.name || "User"}
-                    className="w-10 h-10 rounded-full object-cover border"
-                  />
-                  <div>
-                    <div className="font-semibold text-gray-800">{c.author?.name || "Unknown"}</div>
-                    <div className="text-xs text-gray-500">{new Date(c.createdAt).toLocaleString()}</div>
+        {/* Comments List */}
+        <ul className="space-y-4">
+          {comments.map((c) => {
+            const authorId = getAuthorId(c.author);
+            const isAuthor =
+              Boolean(authorId && currentUserId && authorId === currentUserId);
+            const commentAuthor =
+              typeof c.author === "object" ? c.author : { name: "User" };
+            return (
+              <li
+                key={c._id}
+                className={`p-4 border rounded-xl bg-white bg-opacity-80 shadow-sm ${
+                  editingCommentId === c._id
+                    ? "border-teal-400 bg-teal-50"
+                    : "border-gray-200"
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={getImageSrc(commentAuthor.profileImage)}
+                      alt={commentAuthor.name}
+                      className="w-10 h-10 rounded-full object-cover border-2 border-indigo-200"
+                    />
+                    <div>
+                      <div className="font-semibold text-gray-800">
+                        {commentAuthor.name}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(c.createdAt).toLocaleString()}
+                      </div>
+                    </div>
                   </div>
+
+                  {isAuthor && (
+                    <div className="flex gap-3 text-sm text-gray-500">
+                      {editingCommentId === c._id ? (
+                        <>
+                          <button
+                            onClick={() => updateComment(c._id)}
+                            className="hover:text-teal-600 font-semibold"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingCommentId(null)}
+                            className="hover:text-red-600 font-semibold"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => editComment(c._id, c.text)}
+                            className="hover:text-indigo-600 font-semibold"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => deleteComment(c._id)}
+                            className="hover:text-red-600 font-semibold"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {isAuthor && (
-                  <div className="flex gap-3 text-sm text-gray-500">
-                    {editingCommentId === c._id ? (
-                      <>
-                        <button onClick={() => updateComment(c._id)} className="hover:text-green-600 font-semibold">Save</button>
-                        <button onClick={() => setEditingCommentId(null)} className="hover:text-red-600 font-semibold">Cancel</button>
-                      </>
-                    ) : (
-                      <>
-                        <button onClick={() => editComment(c._id, c.text)} className="hover:text-blue-600 font-semibold">Edit</button>
-                        <button onClick={() => deleteComment(c._id)} className="hover:text-red-600 font-semibold">Delete</button>
-                      </>
-                    )}
-                  </div>
+                {editingCommentId === c._id ? (
+                  <input
+                    value={editingText[c._id] ?? ""}
+                    onChange={(e) =>
+                      setEditingText((prev) => ({
+                        ...prev,
+                        [c._id]: e.target.value,
+                      }))
+                    }
+                    className="w-full mt-3 p-2 border rounded focus:ring-2 focus:ring-teal-400 outline-none bg-white bg-opacity-70"
+                  />
+                ) : (
+                  <p className="text-gray-700 mt-3">{c.text}</p>
                 )}
-              </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
 
-              {editingCommentId === c._id ? (
-                <input
-                  value={editingText[c._id] ?? ""}
-                  onChange={(e) => setEditingText((prev) => ({ ...prev, [c._id]: e.target.value }))}
-                  className="w-full mt-3 p-2 border rounded focus:ring-2 focus:ring-green-400 outline-none"
-                />
-              ) : (
-                <p className="text-gray-700 mt-3">{c.text}</p>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      <footer className="text-center py-6 text-gray-500 text-sm">
+        &copy; {new Date().getFullYear()} EchoPost. Built for creators, by creators.
+      </footer>
 
       <style>
         {`

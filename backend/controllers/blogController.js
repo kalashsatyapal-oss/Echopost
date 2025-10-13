@@ -5,7 +5,7 @@ import cloudinary from "../config/cloudinary.js";
 // Create Blog
 export const createBlog = async (req, res) => {
   try {
-    const { title, content, category } = req.body;
+    const { title, content, category, tag } = req.body;
     let imageUrl = "";
 
     if (req.file) {
@@ -27,6 +27,7 @@ export const createBlog = async (req, res) => {
       title,
       content,
       category,
+      tag,
       author: req.user._id,
       image: imageUrl, // ✅ save Cloudinary URL
     });

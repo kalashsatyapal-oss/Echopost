@@ -8,6 +8,7 @@ const blogSchema = new mongoose.Schema(
     category: { type: String },
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     image: { type: String },
+    tags: [{ type: mongoose.Schema.Types.ObjectId, ref: "Tag" }],
   },
   { timestamps: true }
 );

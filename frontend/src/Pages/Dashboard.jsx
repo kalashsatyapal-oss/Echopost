@@ -18,6 +18,7 @@ export default function Dashboard() {
 
   const navigate = useNavigate();
 
+  // ✅ Fetch logged-in user
   const fetchUser = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -31,12 +32,14 @@ export default function Dashboard() {
     }
   };
 
+  // ✅ Fetch blogs with optional filters
   const fetchBlogs = async (searchTerm = search, selectedCategory = category) => {
     try {
       const res = await axios.get("http://localhost:5000/api/blogs", {
         params: { search: searchTerm, category: selectedCategory },
       });
 
+      // Convert ObjectIds to strings for consistent comparison
       const blogsWithStringLikes = res.data.map((b) => ({
         ...b,
         likes: b.likes.map((id) => id.toString()),
@@ -44,6 +47,7 @@ export default function Dashboard() {
 
       setBlogs(blogsWithStringLikes);
 
+      // Extract unique categories
       const uniqueCategories = [
         ...new Set(res.data.map((b) => b.category).filter(Boolean)),
       ];
@@ -53,12 +57,15 @@ export default function Dashboard() {
     }
   };
 
+  // ✅ Debounced search to prevent multiple API calls per keystroke
   const debouncedFetchBlogs = useCallback(debounce(fetchBlogs, 500), [category]);
 
+  // ✅ Initial user fetch
   useEffect(() => {
     fetchUser();
   }, []);
 
+  // ✅ Fetch blogs when user, search, or category changes
   useEffect(() => {
     if (user) {
       debouncedFetchBlogs(search, category);
@@ -66,11 +73,13 @@ export default function Dashboard() {
     return debouncedFetchBlogs.cancel;
   }, [search, category, user, debouncedFetchBlogs]);
 
+  // ✅ Logout handler
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/");
   };
 
+  // ✅ Return user's profile image or default avatar
   const getProfileImage = () => {
     return user?.profileImage || "/default-avatar.png";
   };
@@ -92,13 +101,14 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Main Section */}
-      <div className="flex flex-col flex-1 md:ml-64">
+      {/* Main Content */}
+      <div className="flex flex-col flex-1 md:ml-64 transition-all duration-300">
         {/* Header */}
         <div className="flex items-center justify-between bg-white bg-opacity-90 py-3 px-6 shadow border-b z-10">
+          {/* Left side (Logo + Title) */}
           <div className="flex items-center gap-4">
             <button
-              className="md:hidden p-2 rounded bg-gray-100"
+              className="md:hidden p-2 rounded bg-gray-100 hover:bg-gray-200"
               onClick={() => setSidebarOpen(!sidebarOpen)}
             >
               ☰
@@ -109,12 +119,13 @@ export default function Dashboard() {
                 alt="EchoPost Logo"
                 className="h-8 w-8 object-contain"
               />
-              <h1 className="text-2xl font-bold text-indigo-700 tracking-wide">
+              <h1 className="text-xl md:text-2xl font-bold text-indigo-700 tracking-wide">
                 EchoPost Dashboard
               </h1>
             </div>
           </div>
 
+          {/* Profile Menu Dropdown */}
           <ProfileMenu
             user={user}
             handleLogout={handleLogout}
@@ -122,7 +133,7 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Search Bar */}
+        {/* Search & Filter Bar */}
         <div className="bg-white bg-opacity-90 px-6 py-4 shadow border-b z-10 flex flex-col md:flex-row items-center gap-3">
           <input
             type="text"
@@ -145,16 +156,13 @@ export default function Dashboard() {
           </select>
         </div>
 
-        {/* Content */}
-        <div className="px-4 py-6 md:px-8">
-          {/* Blog List */}
-          <div className="space-y-6">
-            <AllBlogList
-              blogs={blogs}
-              currentUserId={user?._id}
-              refreshBlogs={() => fetchBlogs(search, category)}
-            />
-          </div>
+        {/* Blog List Content */}
+        <div className="px-4 py-6 md:px-8 w-[calc(100%-100px)] mx-[50px] transition-all duration-300">
+          <AllBlogList
+            blogs={blogs}
+            currentUserId={user?._id}
+            refreshBlogs={() => fetchBlogs(search, category)}
+          />
         </div>
       </div>
     </div>

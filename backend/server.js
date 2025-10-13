@@ -61,6 +61,8 @@ app.use("/api/admin-requests", adminRequestRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/superadmin", superadminRoutes);
 app.use("/api/guidelines", guidelinesRoutes);
+import tagRoutes from "./routes/tagRoutes.js";
+app.use("/api/tags", tagRoutes);
 // Connect MongoDB and start server
 const PORT = process.env.PORT || 5000;
 
