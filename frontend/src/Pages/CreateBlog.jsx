@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSelector } from "react-redux";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -140,27 +140,8 @@ export default function CreateBlog() {
   const [content, setContent] = useState("");
   const [message, setMessage] = useState("");
   const [image, setImage] = useState(null);
-
-  const [tags, setTags] = useState([]); // ✅ existing tags
-  const [selectedTag, setSelectedTag] = useState(""); // ✅ chosen tag
-
   const token = useSelector((state) => state.auth.token);
   const navigate = useNavigate();
-
-  // ✅ Fetch existing tags from backend
-  useEffect(() => {
-    const fetchTags = async () => {
-      try {
-        const res = await axios.get("http://localhost:5000/api/tags", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setTags(res.data);
-      } catch (err) {
-        console.error("Error fetching tags:", err);
-      }
-    };
-    fetchTags();
-  }, [token]);
 
   const editor = useEditor({
     extensions: [StarterKit, TextStyle, Color, FontFamily],
@@ -176,45 +157,37 @@ export default function CreateBlog() {
   });
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!title || !mainCategory || !content) {
-      alert("Please fill in all required fields");
-      return;
-    }
+  e.preventDefault();
+  if (!title || !mainCategory || !content) {
+    alert("Please fill in all required fields");
+    return;
+  }
 
-    const category = subCategory ? `${mainCategory} > ${subCategory}` : mainCategory;
+  const category = subCategory ? `${mainCategory} > ${subCategory}` : mainCategory;
 
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("category", category);
-    formData.append("content", content);
-    if (image) formData.append("image", image);
-    if (selectedTag) formData.append("tag", selectedTag); // ✅ include selected tag
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("category", category);
+  formData.append("content", content);
+  if (image) formData.append("image", image);
 
-    try {
-      await axios.post("http://localhost:5000/api/blogs", formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
+  try {
+    await axios.post("http://localhost:5000/api/blogs", formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
 
-      setMessage("Blog published successfully!");
-      setTimeout(() => {
-        setTitle("");
-        setMainCategory("");
-        setSubCategory("");
-        setContent("");
-        editor.commands.setContent("");
-        setImage(null);
-        setSelectedTag(""); // reset tag
-        setMessage("");
-      }, 2000);
-    } catch (err) {
-      console.error(err);
-      alert("Error creating blog");
-    }
-  };
+    setMessage("Blog published successfully!");
+    setTimeout(() => {
+      setTitle(""); setMainCategory(""); setSubCategory(""); setContent(""); editor.commands.setContent(""); setImage(null); setMessage("");
+    }, 2000);
+  } catch (err) {
+    console.error(err);
+    alert("Error creating blog");
+  }
+};
 
   return (
     <div className="max-w-3xl mx-auto mt-10 p-6 bg-white rounded shadow">
@@ -264,28 +237,12 @@ export default function CreateBlog() {
                 ))}
             </select>
           )}
-
-        {/* ✅ Tag Dropdown */}
-        <select
-          value={selectedTag}
-          onChange={(e) => setSelectedTag(e.target.value)}
-          className="w-full p-2 border rounded"
-        >
-          <option value="">Select Tag</option>
-          {tags.map((t) => (
-            <option key={t._id} value={t.name}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-
         <input
           type="file"
           accept="image/*"
           onChange={(e) => setImage(e.target.files[0])}
           className="w-full p-2 border rounded"
         />
-
         {/* Rich Text Editor Toolbar */}
         <div className="flex gap-2 flex-wrap mb-2">
           <button

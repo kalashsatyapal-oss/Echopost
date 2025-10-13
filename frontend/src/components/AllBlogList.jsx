@@ -222,6 +222,15 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
                 )}
               </div>
 
+              {/* Display Tag(s) if present */}
+              {b.tag && (
+                <div className="mb-1">
+                  <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
+                    {b.tag}
+                  </span>
+                </div>
+              )}
+
               {/* Like and Comments */}
               <div className="flex justify-between items-center text-xs text-gray-600 mt-auto">
                 <button
