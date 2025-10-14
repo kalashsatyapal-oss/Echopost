@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -7,7 +7,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
 import FontFamily from "@tiptap/extension-font-family";
-import { FontSize } from "@tiptap/extension-text-style"; // We'll control fontSize via TextStyle
+import { FontSize } from "@tiptap/extension-text-style";
 
 const categories = [
   {
@@ -140,8 +140,23 @@ export default function CreateBlog() {
   const [content, setContent] = useState("");
   const [message, setMessage] = useState("");
   const [image, setImage] = useState(null);
+  const [tags, setTags] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
   const token = useSelector((state) => state.auth.token);
   const navigate = useNavigate();
+
+  // Fetch tags from backend
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const res = await axios.get("http://localhost:5000/api/tags");
+        setTags(res.data);
+      } catch (err) {
+        console.error("Error fetching tags", err);
+      }
+    };
+    fetchTags();
+  }, []);
 
   const editor = useEditor({
     extensions: [StarterKit, TextStyle, Color, FontFamily],
@@ -156,43 +171,71 @@ export default function CreateBlog() {
     },
   });
 
-  const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!title || !mainCategory || !content) {
-    alert("Please fill in all required fields");
-    return;
-  }
-
-  const category = subCategory ? `${mainCategory} > ${subCategory}` : mainCategory;
-
-  const formData = new FormData();
-  formData.append("title", title);
-  formData.append("category", category);
-  formData.append("content", content);
-  if (image) formData.append("image", image);
-
-  try {
-    await axios.post("http://localhost:5000/api/blogs", formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
-      },
+  const handleTagChange = (tagId) => {
+    setSelectedTags((prev) => {
+      if (prev.includes(tagId)) {
+        return prev.filter((id) => id !== tagId);
+      } else if (prev.length < 5) {
+        return [...prev, tagId];
+      } else {
+        alert("You can select up to 5 tags only");
+        return prev;
+      }
     });
+  };
 
-    setMessage("Blog published successfully!");
-    setTimeout(() => {
-      setTitle(""); setMainCategory(""); setSubCategory(""); setContent(""); editor.commands.setContent(""); setImage(null); setMessage("");
-    }, 2000);
-  } catch (err) {
-    console.error(err);
-    alert("Error creating blog");
-  }
-};
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title || !mainCategory || !content) {
+      alert("Please fill in all required fields");
+      return;
+    }
+    if (selectedTags.length < 1) {
+      alert("Please select at least 1 tag");
+      return;
+    }
+
+    const category = subCategory
+      ? `${mainCategory} > ${subCategory}`
+      : mainCategory;
+
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("category", category);
+    formData.append("content", content);
+    if (image) formData.append("image", image);
+    selectedTags.forEach((tagId) => formData.append("tags[]", tagId));
+
+    try {
+      await axios.post("http://localhost:5000/api/blogs", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setMessage("Blog published successfully!");
+      setTimeout(() => {
+        setTitle("");
+        setMainCategory("");
+        setSubCategory("");
+        setContent("");
+        editor.commands.setContent("");
+        setImage(null);
+        setSelectedTags([]);
+        setMessage("");
+      }, 2000);
+    } catch (err) {
+      console.error(err);
+      alert("Error creating blog");
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto mt-10 p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-4">Create Blog</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {/* Title */}
         <input
           type="text"
           placeholder="Title"
@@ -237,13 +280,42 @@ export default function CreateBlog() {
                 ))}
             </select>
           )}
+
+        {/* Image Upload */}
         <input
           type="file"
           accept="image/*"
           onChange={(e) => setImage(e.target.files[0])}
           className="w-full p-2 border rounded"
         />
-        {/* Rich Text Editor Toolbar */}
+
+        {/* Tag Selection */}
+        <div className="border p-3 rounded">
+          <h2 className="font-semibold mb-2">
+            Select Tags (1–5 allowed):
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            {tags.map((tag) => (
+              <label
+                key={tag._id}
+                className={`flex items-center gap-2 border px-3 py-1 rounded cursor-pointer ${
+                  selectedTags.includes(tag._id)
+                    ? "bg-blue-100 border-blue-400"
+                    : ""
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedTags.includes(tag._id)}
+                  onChange={() => handleTagChange(tag._id)}
+                />
+                {tag.name}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Editor Toolbar */}
         <div className="flex gap-2 flex-wrap mb-2">
           <button
             type="button"
@@ -303,7 +375,10 @@ export default function CreateBlog() {
           </select>
         </div>
 
+        {/* Editor */}
         <EditorContent editor={editor} />
+
+        {/* Submit */}
         <button
           type="submit"
           className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"

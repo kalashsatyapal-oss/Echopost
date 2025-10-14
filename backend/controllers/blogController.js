@@ -3,14 +3,14 @@ import User from "../models/User.js";
 import cloudinary from "../config/cloudinary.js";
 
 // Create Blog
+// Create Blog
 export const createBlog = async (req, res) => {
   try {
-    const { title, content, category } = req.body;
+    const { title, content, category, tags } = req.body;
     let imageUrl = "";
 
     if (req.file) {
       const buffer = req.file.buffer;
-
       imageUrl = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           { folder: "blogs" },
@@ -23,15 +23,28 @@ export const createBlog = async (req, res) => {
       });
     }
 
+    // Validate tags
+    let parsedTags = [];
+    if (tags) {
+      parsedTags = Array.isArray(tags) ? tags : JSON.parse(tags);
+      if (parsedTags.length < 1 || parsedTags.length > 5) {
+        return res
+          .status(400)
+          .json({ message: "Please select between 1 and 5 tags" });
+      }
+    }
+
     const blog = await Blog.create({
       title,
       content,
       category,
       author: req.user._id,
-      image: imageUrl, // ✅ save Cloudinary URL
+      image: imageUrl,
+      tags: parsedTags, // store ObjectIds
     });
 
-    res.status(201).json(blog);
+    const populatedBlog = await blog.populate("tags", "name");
+    res.status(201).json(populatedBlog);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
@@ -68,6 +81,7 @@ export const getBlogs = async (req, res) => {
 
     const blogs = await Blog.find(query)
       .populate("author", "name profileImage")
+      .populate("tags", "name")
       .sort({ createdAt: -1 });
 
     res.json(blogs);
@@ -80,10 +94,8 @@ export const getBlogs = async (req, res) => {
 // Get Single Blog
 export const getBlog = async (req, res) => {
   try {
-    const blog = await Blog.findById(req.params.id).populate(
-      "author",
-      "name profileImage"
-    );
+    const blog = await Blog.findById(req.params.id) .populate("author", "name profileImage")
+  .populate("tags", "name");
     if (!blog) return res.status(404).json({ message: "Blog not found" });
     res.json(blog);
   } catch (error) {
@@ -91,6 +103,7 @@ export const getBlog = async (req, res) => {
   }
 };
 
+// Update Blog
 // Update Blog
 export const updateBlog = async (req, res) => {
   try {
@@ -100,11 +113,17 @@ export const updateBlog = async (req, res) => {
     if (blog.author.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not authorized" });
 
-    const { title, content, category } = req.body;
+    const { title, content, category, tags } = req.body;
 
     blog.title = title || blog.title;
     blog.content = content || blog.content;
     blog.category = category || blog.category;
+
+    // ✅ Handle tag updates
+    if (tags) {
+      const parsedTags = Array.isArray(tags) ? tags : JSON.parse(tags);
+      blog.tags = parsedTags;
+    }
 
     // ✅ Handle new image upload if file exists
     if (req.file) {
@@ -119,11 +138,13 @@ export const updateBlog = async (req, res) => {
         );
         stream.end(buffer);
       });
-      blog.image = imageUrl; // Save new Cloudinary URL
+      blog.image = imageUrl;
     }
 
     await blog.save();
-    res.json(blog);
+
+    const populatedBlog = await blog.populate("tags", "name");
+    res.json(populatedBlog);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });

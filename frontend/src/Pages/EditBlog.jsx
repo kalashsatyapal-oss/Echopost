@@ -33,6 +33,8 @@ export default function EditBlog() {
   const [content, setContent] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [existingImage, setExistingImage] = useState(null);
+  const [allTags, setAllTags] = useState([]); // ✅ available tags list
+  const [selectedTags, setSelectedTags] = useState([]); // ✅ selected tags
 
   const editor = useEditor({
     extensions: [StarterKit, TextStyle, Color, FontFamily],
@@ -47,6 +49,19 @@ export default function EditBlog() {
     },
   });
 
+  // Fetch all tags for checkbox list
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const res = await axios.get("http://localhost:5000/api/tags");
+        setAllTags(res.data);
+      } catch (err) {
+        console.error("Failed to load tags:", err);
+      }
+    };
+    fetchTags();
+  }, []);
+
   // Fetch blog details
   useEffect(() => {
     const fetchBlog = async () => {
@@ -59,6 +74,7 @@ export default function EditBlog() {
         setSubCategory(sub || "");
         setContent(res.data.content);
         setExistingImage(res.data.image || null);
+        setSelectedTags(res.data.tags?.map((t) => t._id) || []);
 
         if (editor) editor.commands.setContent(res.data.content);
       } catch (err) {
@@ -68,6 +84,12 @@ export default function EditBlog() {
     };
     fetchBlog();
   }, [id, editor]);
+
+  const handleTagToggle = (tagId) => {
+    setSelectedTags((prev) =>
+      prev.includes(tagId) ? prev.filter((t) => t !== tagId) : [...prev, tagId]
+    );
+  };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -83,6 +105,7 @@ export default function EditBlog() {
       formData.append("title", title);
       formData.append("category", category);
       formData.append("content", content);
+      formData.append("tags", JSON.stringify(selectedTags));
       if (imageFile) formData.append("image", imageFile);
 
       await axios.put(`http://localhost:5000/api/blogs/${id}`, formData, {
@@ -116,7 +139,10 @@ export default function EditBlog() {
         {/* Main Category */}
         <select
           value={mainCategory}
-          onChange={(e) => { setMainCategory(e.target.value); setSubCategory(""); }}
+          onChange={(e) => {
+            setMainCategory(e.target.value);
+            setSubCategory("");
+          }}
           className="w-full p-2 border rounded"
         >
           <option value="">Select Category</option>
@@ -129,7 +155,8 @@ export default function EditBlog() {
 
         {/* Subcategory */}
         {mainCategory &&
-          categories.find((c) => `${c.icon} ${c.name}` === mainCategory)?.subcategories.length > 0 && (
+          categories.find((c) => `${c.icon} ${c.name}` === mainCategory)
+            ?.subcategories.length > 0 && (
             <select
               value={subCategory}
               onChange={(e) => setSubCategory(e.target.value)}
@@ -145,6 +172,26 @@ export default function EditBlog() {
                 ))}
             </select>
           )}
+
+        {/* Tags Section ✅ */}
+        <div>
+          <h2 className="font-semibold mb-2">Select Tags (1–5)</h2>
+          <div className="flex flex-wrap gap-3">
+            {allTags.map((tag) => (
+              <label
+                key={tag._id}
+                className="flex items-center gap-2 border px-3 py-1 rounded cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedTags.includes(tag._id)}
+                  onChange={() => handleTagToggle(tag._id)}
+                />
+                <span>{tag.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
 
         {/* Existing Image */}
         <div className="flex flex-col gap-2">
@@ -168,7 +215,7 @@ export default function EditBlog() {
           onChange={(e) => setImageFile(e.target.files[0])}
         />
 
-        {/* Editor Toolbar */}
+        {/* Toolbar */}
         <div className="flex gap-2 flex-wrap mb-2">
           <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className="px-2 py-1 border rounded">Bold</button>
           <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className="px-2 py-1 border rounded">Italic</button>
@@ -181,23 +228,11 @@ export default function EditBlog() {
             <option value="Times New Roman">Times New Roman</option>
             <option value="Verdana">Verdana</option>
           </select>
-          <select onChange={(e) => editor.chain().focus().setFontSize(e.target.value).run()} className="border rounded px-2 py-1">
-            <option value="">Font Size</option>
-            <option value="12px">12px</option>
-            <option value="14px">14px</option>
-            <option value="16px">16px</option>
-            <option value="18px">18px</option>
-            <option value="20px">20px</option>
-            <option value="24px">24px</option>
-            <option value="30px">30px</option>
-          </select>
           <input type="color" onChange={(e) => editor.chain().focus().setColor(e.target.value).run()} className="w-10 h-8 p-0 border rounded"/>
         </div>
 
-        {/* Editor */}
         <EditorContent editor={editor} />
 
-        {/* Submit */}
         <button
           type="submit"
           className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"

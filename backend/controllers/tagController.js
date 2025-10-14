@@ -54,3 +54,25 @@ export const deleteTag = async (req, res) => {
     res.status(500).json({ message: "Error deleting tag" });
   }
 };
+// ✅ Update Tag (SuperAdmin Only)
+export const updateTag = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== "superadmin") {
+      return res.status(403).json({ message: "Only SuperAdmin can edit tags" });
+    }
+
+    const { name, description } = req.body;
+    const updated = await Tag.findByIdAndUpdate(
+      req.params.id,
+      { name, description },
+      { new: true }
+    );
+
+    if (!updated) return res.status(404).json({ message: "Tag not found" });
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating tag:", error);
+    res.status(500).json({ message: "Server error while updating tag" });
+  }
+};

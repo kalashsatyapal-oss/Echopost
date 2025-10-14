@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import ManageUsers from "../components/ManageUsers";
 import EditGuidelines from "../components/EditGuidelines";
 import { useNavigate } from "react-router-dom";
-import { FaUsers, FaBlog, FaCogs, FaClipboardList, FaHome } from "react-icons/fa";
+import { FaUsers, FaBlog, FaCogs, FaClipboardList, FaHome, FaEdit } from "react-icons/fa";
 import logo from "../assets/logo.png";
 
 export default function SuperAdminDashboard() {
@@ -15,6 +15,7 @@ export default function SuperAdminDashboard() {
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [editTag, setEditTag] = useState(null); // ✅ For tag editing
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
@@ -64,7 +65,6 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  // ✅ FIXED: Tag creation now updates UI instantly and safely
   const handleCreateTag = async (e) => {
     e.preventDefault();
     try {
@@ -74,13 +74,10 @@ export default function SuperAdminDashboard() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const newTag = res.data.tag || res.data; // handle if backend wraps response
-
+      const newTag = res.data.tag || res.data;
       if (newTag && newTag._id) {
-        // ✅ instantly show new tag
         setTags((prev) => [...prev, newTag]);
       } else {
-        // fallback if backend didn't return tag
         await fetchTags();
       }
 
@@ -103,6 +100,25 @@ export default function SuperAdminDashboard() {
       setTags((prev) => prev.filter((t) => t._id !== id));
     } catch (err) {
       toast.error("Failed to delete tag");
+    }
+  };
+
+  // ✅ New functions for SuperAdmin tag editing
+  const handleEditTag = (tag) => setEditTag(tag);
+
+  const handleUpdateTag = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.put(
+        `http://localhost:5000/api/tags/${editTag._id}`,
+        { name: editTag.name, description: editTag.description },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success("Tag updated successfully");
+      setTags((prev) => prev.map((t) => (t._id === editTag._id ? res.data : t)));
+      setEditTag(null);
+    } catch (err) {
+      toast.error("Failed to update tag");
     }
   };
 
@@ -307,27 +323,30 @@ export default function SuperAdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tags.map(
-                    (tag) =>
-                      tag &&
-                      tag._id && (
-                        <tr key={tag._id} className="border-t hover:bg-gray-50">
-                          <td className="p-2">{tag.name}</td>
-                          <td className="p-2 text-gray-600">{tag.description || "—"}</td>
-                          <td className="p-2 text-gray-500">
-                            {new Date(tag.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="p-2">
-                            <button
-                              onClick={() => handleDeleteTag(tag._id)}
-                              className="text-red-600 hover:underline"
-                            >
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                  )}
+                  {tags.map((tag) => (
+                    <tr key={tag._id} className="border-t hover:bg-gray-50">
+                      <td className="p-2">{tag.name}</td>
+                      <td className="p-2 text-gray-600">{tag.description || "—"}</td>
+                      <td className="p-2 text-gray-500">
+                        {new Date(tag.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="p-2 flex gap-3">
+                        {/* ✅ Edit button only for SuperAdmin */}
+                        <button
+                          onClick={() => handleEditTag(tag)}
+                          className="text-blue-600 hover:underline flex items-center gap-1"
+                        >
+                          <FaEdit /> Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTag(tag._id)}
+                          className="text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
                   {tags.length === 0 && (
                     <tr>
                       <td colSpan="4" className="text-center py-4 text-gray-500">
@@ -342,7 +361,44 @@ export default function SuperAdminDashboard() {
         )}
       </main>
 
-      {/* Footer */}
+      {/* ✅ Edit Tag Modal */}
+      {editTag && (
+        <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-xl w-[90%] max-w-md shadow-lg">
+            <h3 className="text-xl font-semibold text-indigo-700 mb-4">Edit Tag</h3>
+            <form onSubmit={handleUpdateTag} className="space-y-4">
+              <input
+                type="text"
+                className="w-full border p-2 rounded"
+                value={editTag.name}
+                onChange={(e) => setEditTag({ ...editTag, name: e.target.value })}
+              />
+              <input
+                type="text"
+                className="w-full border p-2 rounded"
+                value={editTag.description}
+                onChange={(e) => setEditTag({ ...editTag, description: e.target.value })}
+              />
+              <div className="flex justify-end gap-3 mt-4">
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-gray-300 rounded"
+                  onClick={() => setEditTag(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                >
+                  Update
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <footer className="text-center py-6 text-gray-500 text-sm">
         &copy; {new Date().getFullYear()} EchoPost SuperAdmin — Built for creators, by creators.
       </footer>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from "react"; 
 import { Link } from "react-router-dom";
 import axios from "axios";
 
@@ -184,7 +184,9 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
                   <p className="font-semibold text-gray-700 text-sm">
                     {b.author?.name || "Unknown Author"}
                   </p>
-                  <p className="text-xs text-gray-500">{formatDate(b.createdAt)}</p>
+                  <p className="text-xs text-gray-500">
+                    {formatDate(b.createdAt)}
+                  </p>
                 </div>
               </div>
 
@@ -206,6 +208,20 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
                 <Link to={`/blog/${b._id}`}>{b.title}</Link>
               </h2>
 
+              {/* ✅ Display Multiple Tags */}
+              {b.tags && b.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {b.tags.map((tag) => (
+                    <span
+                      key={tag._id}
+                      className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full"
+                    >
+                      #{tag.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* Blog Content */}
               <div className="text-gray-700 mb-2 flex-1 text-sm">
                 <p
@@ -222,16 +238,7 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
                 )}
               </div>
 
-              {/* Display Tag(s) if present */}
-              {b.tag && (
-                <div className="mb-1">
-                  <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
-                    {b.tag}
-                  </span>
-                </div>
-              )}
-
-              {/* Like and Comments */}
+              {/* Like + Comments */}
               <div className="flex justify-between items-center text-xs text-gray-600 mt-auto">
                 <button
                   onClick={() => toggleLike(b._id)}
@@ -288,7 +295,9 @@ export default function AllBlogList({ blogs, currentUserId, refreshBlogs }) {
                             alt={c.author?.name}
                             className="w-5 h-5 rounded-full object-cover"
                           />
-                          <p className="font-medium text-gray-700 text-xs">{c.author?.name}</p>
+                          <p className="font-medium text-gray-700 text-xs">
+                            {c.author?.name}
+                          </p>
                         </div>
                         {c.author._id === currentUserId && (
                           <div className="flex gap-1 text-xs text-gray-500">
