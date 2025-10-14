@@ -3,10 +3,9 @@ import User from "../models/User.js";
 import cloudinary from "../config/cloudinary.js";
 
 // Create Blog
-// Create Blog
 export const createBlog = async (req, res) => {
   try {
-    const { title, content, category, tags } = req.body;
+    const { title, content, category, subcategory, tags } = req.body;
     let imageUrl = "";
 
     if (req.file) {
@@ -23,7 +22,6 @@ export const createBlog = async (req, res) => {
       });
     }
 
-    // Validate tags
     let parsedTags = [];
     if (tags) {
       parsedTags = Array.isArray(tags) ? tags : JSON.parse(tags);
@@ -37,10 +35,11 @@ export const createBlog = async (req, res) => {
     const blog = await Blog.create({
       title,
       content,
-      category,
+      category,      // stored separately
+      subcategory,   // stored separately
       author: req.user._id,
       image: imageUrl,
-      tags: parsedTags, // store ObjectIds
+      tags: parsedTags,
     });
 
     const populatedBlog = await blog.populate("tags", "name");
@@ -51,32 +50,32 @@ export const createBlog = async (req, res) => {
   }
 };
 
-// Get All Blogs with Search & Category Filter
-// Get all blogs with search + category
-// Get All Blogs with Search & Category Filter
+// Get All Blogs with search & filters
 export const getBlogs = async (req, res) => {
   try {
-    const { search, category } = req.query;
+    const { search, category, subcategory } = req.query;
     let query = {};
 
+    if (category) query.category = category;
+    if (subcategory) query.subcategory = subcategory;
+
     if (search) {
-      // Search by title or author name
       const authors = await User.find({
         name: { $regex: search, $options: "i" },
       }).select("_id");
-
       const authorIds = authors.map((a) => a._id);
 
-      query = {
-        $or: [
-          { title: { $regex: search, $options: "i" } },
-          { author: { $in: authorIds } },
-        ],
-      };
-    }
+      const Tag = (await import("../models/Tag.js")).default;
+      const matchingTags = await Tag.find({
+        name: { $regex: search, $options: "i" },
+      }).select("_id");
+      const tagIds = matchingTags.map((t) => t._id);
 
-    if (category) {
-      query.category = category;
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { author: { $in: authorIds } },
+        { tags: { $in: tagIds } },
+      ];
     }
 
     const blogs = await Blog.find(query)
@@ -94,8 +93,9 @@ export const getBlogs = async (req, res) => {
 // Get Single Blog
 export const getBlog = async (req, res) => {
   try {
-    const blog = await Blog.findById(req.params.id) .populate("author", "name profileImage")
-  .populate("tags", "name");
+    const blog = await Blog.findById(req.params.id)
+      .populate("author", "name profileImage")
+      .populate("tags", "name");
     if (!blog) return res.status(404).json({ message: "Blog not found" });
     res.json(blog);
   } catch (error) {
@@ -103,7 +103,6 @@ export const getBlog = async (req, res) => {
   }
 };
 
-// Update Blog
 // Update Blog
 export const updateBlog = async (req, res) => {
   try {
@@ -113,19 +112,18 @@ export const updateBlog = async (req, res) => {
     if (blog.author.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not authorized" });
 
-    const { title, content, category, tags } = req.body;
+    const { title, content, category, subcategory, tags } = req.body;
 
     blog.title = title || blog.title;
     blog.content = content || blog.content;
     blog.category = category || blog.category;
+    blog.subcategory = subcategory || blog.subcategory;
 
-    // ✅ Handle tag updates
     if (tags) {
       const parsedTags = Array.isArray(tags) ? tags : JSON.parse(tags);
       blog.tags = parsedTags;
     }
 
-    // ✅ Handle new image upload if file exists
     if (req.file) {
       const buffer = req.file.buffer;
       const imageUrl = await new Promise((resolve, reject) => {
@@ -142,7 +140,6 @@ export const updateBlog = async (req, res) => {
     }
 
     await blog.save();
-
     const populatedBlog = await blog.populate("tags", "name");
     res.json(populatedBlog);
   } catch (error) {
@@ -167,8 +164,7 @@ export const deleteBlog = async (req, res) => {
   }
 };
 
-// Like/Unlike Blog
-// Toggle like
+// Toggle Like
 export const toggleLike = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);

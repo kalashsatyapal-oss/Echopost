@@ -164,7 +164,7 @@ export default function BlogDetail() {
           <h1 className="text-2xl font-extrabold text-indigo-700">EchoPost</h1>
         </div>
         <Link
-          to="/"
+          to="/dashboard"
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-500 transition"
         >
           <FaArrowLeft /> Back

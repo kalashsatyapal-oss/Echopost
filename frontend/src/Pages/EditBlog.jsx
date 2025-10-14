@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import axios from "axios";
@@ -7,20 +7,41 @@ import StarterKit from "@tiptap/starter-kit";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
 import FontFamily from "@tiptap/extension-font-family";
+import { Extension } from "@tiptap/core";
+import TextAlign from "@tiptap/extension-text-align";
+import Cropper from "react-easy-crop";
+import getCroppedImg from "../utils/cropImage";
+import Modal from "react-modal";
+import Sidebar from "../components/Sidebar.jsx";
+import ProfileMenu from "../components/ProfileMenu.jsx";
+import EditorToolbar from "../components/EditorToolbar";
+import { categories } from "../data/categories";
 
-const categories = [
-  { icon: "📝", name: "General & Lifestyle", subcategories: ["Personal Development","Productivity & Time Management","Minimalism","Life Hacks","Wellness & Mental Health"] },
-  { icon: "🌍", name: "Travel & Culture", subcategories: ["Travel Guides","Backpacking & Budget Travel","Cultural Experiences","Local Cuisine","Travel Photography"] },
-  { icon: "🍳", name: "Food & Drink", subcategories: ["Recipes","Restaurant Reviews","Vegan & Vegetarian Living","Baking & Desserts","Wine & Spirits"] },
-  { icon: "💼", name: "Business & Finance", subcategories: ["Entrepreneurship","Freelancing & Side Hustles","Marketing & Branding","Investing & Personal Finance","E-commerce & Dropshipping"] },
-  { icon: "🧠", name: "Education & Learning", subcategories: ["Study Tips","Language Learning","Online Courses & MOOCs","Academic Research","Homeschooling"] },
-  { icon: "💻", name: "Tech & Digital Life", subcategories: ["Software Reviews","Coding & Programming","AI & Machine Learning","Cybersecurity","Gadgets & Gear"] },
-  { icon: "🎨", name: "Creative Arts", subcategories: ["Writing & Storytelling","Photography","Graphic Design","DIY & Crafts","Music & Performance"] },
-  { icon: "🧘", name: "Health & Fitness", subcategories: ["Workout Routines","Nutrition & Diets","Yoga & Meditation","Health Conditions & Recovery","Sports & Athletics"] },
-  { icon: "🏡", name: "Home & Living", subcategories: ["Interior Design","Gardening","Home Improvement","Sustainable Living","Parenting & Family Life"] },
-  { icon: "🎮", name: "Entertainment & Media", subcategories: ["Movie & TV Reviews","Book Recommendations","Celebrity News","Gaming","Pop Culture Commentary"] },
-  { icon: "🗳️", name: "Society & Opinion", subcategories: ["Politics & Current Events","Environmental Issues","Human Rights","Philosophy & Ethics","Social Commentary"] },
-];
+// FontSize extension
+const FontSize = Extension.create({
+  name: "fontSize",
+  addOptions() { return { types: ["textStyle"] }; },
+  addGlobalAttributes() {
+    return [
+      {
+        types: this.options.types,
+        attributes: {
+          fontSize: {
+            default: null,
+            renderHTML: (attrs) => attrs.fontSize ? { style: `font-size: ${attrs.fontSize}` } : {},
+            parseHTML: (el) => ({ fontSize: el.style.fontSize.replace(/['"]+/g, "") }),
+          },
+        },
+      },
+    ];
+  },
+  addCommands() {
+    return {
+      setFontSize: (size) => ({ chain }) => chain().setMark("textStyle", { fontSize: size }).run(),
+      unsetFontSize: () => ({ chain }) => chain().setMark("textStyle", { fontSize: null }).removeEmptyTextStyle().run(),
+    };
+  },
+});
 
 export default function EditBlog() {
   const { id } = useParams();
@@ -31,215 +52,175 @@ export default function EditBlog() {
   const [mainCategory, setMainCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
   const [content, setContent] = useState("");
-  const [imageFile, setImageFile] = useState(null);
+  const [allTags, setAllTags] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
   const [existingImage, setExistingImage] = useState(null);
-  const [allTags, setAllTags] = useState([]); // ✅ available tags list
-  const [selectedTags, setSelectedTags] = useState([]); // ✅ selected tags
+  const [imageFile, setImageFile] = useState(null);
+  const [croppedImage, setCroppedImage] = useState(null);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState(null);
 
   const editor = useEditor({
-    extensions: [StarterKit, TextStyle, Color, FontFamily],
-    content: "",
+    extensions: [StarterKit, TextStyle, Color, FontFamily, FontSize, TextAlign.configure({ types: ["heading", "paragraph"] })],
+    content,
     onUpdate: ({ editor }) => setContent(editor.getHTML()),
-    editorProps: {
-      attributes: {
-        class:
-          "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none min-h-[200px] p-2 border rounded",
-        placeholder: "Edit your blog content here...",
-      },
-    },
+    editorProps: { attributes: { className: "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none min-h-[200px] p-3 border rounded bg-gray-50" } },
   });
 
-  // Fetch all tags for checkbox list
-  useEffect(() => {
-    const fetchTags = async () => {
-      try {
-        const res = await axios.get("http://localhost:5000/api/tags");
-        setAllTags(res.data);
-      } catch (err) {
-        console.error("Failed to load tags:", err);
-      }
-    };
-    fetchTags();
-  }, []);
+  // Fetch logged-in user
+  const fetchUser = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/users/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUser(res.data.user);
+    } catch (err) {
+      console.error("Failed to fetch user:", err);
+    }
+  };
 
-  // Fetch blog details
+  useEffect(() => { fetchUser(); }, [token]);
+
+  // Fetch tags
+  useEffect(() => { axios.get("http://localhost:5000/api/tags").then(res => setAllTags(res.data)).catch(console.error); }, []);
+
+  // Fetch blog data
   useEffect(() => {
     const fetchBlog = async () => {
       try {
         const res = await axios.get(`http://localhost:5000/api/blogs/${id}`);
-        setTitle(res.data.title);
-
-        const [main, sub] = res.data.category.split(" > ");
-        setMainCategory(main);
-        setSubCategory(sub || "");
-        setContent(res.data.content);
-        setExistingImage(res.data.image || null);
-        setSelectedTags(res.data.tags?.map((t) => t._id) || []);
-
-        if (editor) editor.commands.setContent(res.data.content);
+        const data = res.data;
+        setTitle(data.title);
+        setMainCategory(data.category || "");
+        setSubCategory(data.subcategory || "");
+        setContent(data.content);
+        setExistingImage(data.image || null);
+        setSelectedTags(data.tags?.map(t => t._id) || []);
+        if (editor) editor.commands.setContent(data.content);
       } catch (err) {
-        console.error("Failed to fetch blog:", err);
+        console.error(err);
         alert("Failed to load blog.");
       }
     };
     fetchBlog();
   }, [id, editor]);
 
-  const handleTagToggle = (tagId) => {
-    setSelectedTags((prev) =>
-      prev.includes(tagId) ? prev.filter((t) => t !== tagId) : [...prev, tagId]
-    );
-  };
+  const handleTagToggle = (tagId) =>
+    setSelectedTags((prev) => (prev.includes(tagId) ? prev.filter((t) => t !== tagId) : [...prev, tagId]));
+
+  const onCropComplete = useCallback((_, pixels) => setCroppedAreaPixels(pixels), []);
+  const showCroppedImage = useCallback(async () => {
+    try {
+      const blob = await getCroppedImg(imageFile ? URL.createObjectURL(imageFile) : existingImage, croppedAreaPixels);
+      setCroppedImage(blob);
+      setCropModalOpen(false);
+    } catch (err) { console.error(err); }
+  }, [imageFile, croppedAreaPixels, existingImage]);
+
+  const handleImageChange = (e) => { const file = e.target.files[0]; if (file) { setImageFile(file); setCropModalOpen(true); } };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    if (!title || !mainCategory || !content) {
-      alert("Please fill in all required fields");
-      return;
-    }
-
-    const category = subCategory ? `${mainCategory} > ${subCategory}` : mainCategory;
+    if (!title || !mainCategory || !content) { alert("Fill all required fields"); return; }
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("category", mainCategory);
+    formData.append("subcategory", subCategory);
+    formData.append("content", content);
+    selectedTags.forEach(t => formData.append("tags[]", t));
+    if (croppedImage) formData.append("image", croppedImage, "cropped.jpg");
 
     try {
-      const formData = new FormData();
-      formData.append("title", title);
-      formData.append("category", category);
-      formData.append("content", content);
-      formData.append("tags", JSON.stringify(selectedTags));
-      if (imageFile) formData.append("image", imageFile);
-
-      await axios.put(`http://localhost:5000/api/blogs/${id}`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
+      await axios.put(`http://localhost:5000/api/blogs/${id}`, formData, { headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" } });
       alert("Blog updated successfully!");
-      navigate("/my-blogs");
-    } catch (err) {
-      console.error("Failed to update blog:", err);
-      alert("Failed to update blog.");
-    }
+      navigate("/dashboard");
+    } catch (err) { console.error(err); alert("Failed to update blog."); }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/");
+  };
+
+  const getProfileImage = () => user?.profileImage || "/default-avatar.png";
+
   return (
-    <div className="max-w-3xl mx-auto mt-10 p-6 bg-white rounded shadow">
-      <h1 className="text-2xl font-bold mb-4">Edit Blog</h1>
-      <form onSubmit={handleUpdate} className="flex flex-col gap-4">
-        {/* Title */}
-        <input
-          type="text"
-          placeholder="Title"
-          className="w-full p-2 border rounded"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-indigo-200 flex font-sans text-gray-800">
+      {/* Sidebar */}
+      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} handleLogout={handleLogout} />
 
-        {/* Main Category */}
-        <select
-          value={mainCategory}
-          onChange={(e) => {
-            setMainCategory(e.target.value);
-            setSubCategory("");
-          }}
-          className="w-full p-2 border rounded"
-        >
-          <option value="">Select Category</option>
-          {categories.map((c) => (
-            <option key={c.name} value={`${c.icon} ${c.name}`}>
-              {c.icon} {c.name}
-            </option>
-          ))}
-        </select>
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 z-10 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
 
-        {/* Subcategory */}
-        {mainCategory &&
-          categories.find((c) => `${c.icon} ${c.name}` === mainCategory)
-            ?.subcategories.length > 0 && (
-            <select
-              value={subCategory}
-              onChange={(e) => setSubCategory(e.target.value)}
-              className="w-full p-2 border rounded"
-            >
-              <option value="">Select Subcategory</option>
-              {categories
-                .find((c) => `${c.icon} ${c.name}` === mainCategory)
-                .subcategories.map((sc) => (
-                  <option key={sc} value={sc}>
-                    {sc}
-                  </option>
-                ))}
-            </select>
-          )}
-
-        {/* Tags Section ✅ */}
-        <div>
-          <h2 className="font-semibold mb-2">Select Tags (1–5)</h2>
-          <div className="flex flex-wrap gap-3">
-            {allTags.map((tag) => (
-              <label
-                key={tag._id}
-                className="flex items-center gap-2 border px-3 py-1 rounded cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedTags.includes(tag._id)}
-                  onChange={() => handleTagToggle(tag._id)}
-                />
-                <span>{tag.name}</span>
-              </label>
-            ))}
+      <div className="flex flex-col flex-1 md:ml-64 transition-all duration-300">
+        {/* Header */}
+        <div className="flex items-center justify-between bg-white bg-opacity-90 py-3 px-6 shadow border-b z-10">
+          <div className="flex items-center gap-4">
+            <button className="md:hidden p-2 rounded bg-gray-100 hover:bg-gray-200" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
+            <h1 className="text-xl md:text-2xl font-bold text-indigo-700 tracking-wide">Edit Blog</h1>
           </div>
+          <ProfileMenu user={user} handleLogout={handleLogout} getProfileImage={getProfileImage} />
         </div>
 
-        {/* Existing Image */}
-        <div className="flex flex-col gap-2">
-          {existingImage ? (
-            <img
-              src={existingImage}
-              alt="Blog"
-              className="w-48 h-48 object-cover rounded"
-            />
-          ) : (
-            <div className="w-48 h-48 flex items-center justify-center border rounded text-gray-400">
-              No image
+        {/* Main Content */}
+        <div className="px-6 py-6 w-full max-w-4xl mx-auto">
+          <form onSubmit={handleUpdate} className="flex flex-col gap-4 bg-white p-6 rounded shadow">
+            <input type="text" placeholder="Title" className="w-full p-3 border rounded" value={title} onChange={(e) => setTitle(e.target.value)} />
+            
+            {/* Categories */}
+            <select value={mainCategory} onChange={e => { setMainCategory(e.target.value); setSubCategory(""); }} className="w-full p-3 border rounded">
+              <option value="">Select Category</option>
+              {categories.map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
+            </select>
+            {mainCategory && categories.find(c => c.name === mainCategory)?.subcategories.length > 0 && (
+              <select value={subCategory} onChange={e => setSubCategory(e.target.value)} className="w-full p-3 border rounded">
+                <option value="">Select Subcategory</option>
+                {categories.find(c => c.name === mainCategory).subcategories.map(sc => <option key={sc} value={sc}>{sc}</option>)}
+              </select>
+            )}
+
+            {/* Tags */}
+            <div className="border p-3 rounded">
+              <h2 className="font-semibold mb-2">Select Tags</h2>
+              <div className="flex flex-wrap gap-3">
+                {allTags.map(tag => (
+                  <label key={tag._id} className={`flex items-center gap-2 border px-3 py-1 rounded cursor-pointer ${selectedTags.includes(tag._id) ? "bg-blue-100 border-blue-400 text-blue-600" : "hover:bg-gray-50"}`}>
+                    <input type="checkbox" checked={selectedTags.includes(tag._id)} onChange={() => handleTagToggle(tag._id)} />
+                    {tag.name}
+                  </label>
+                ))}
+              </div>
             </div>
-          )}
+
+            {/* Image */}
+            <input type="file" accept="image/*" onChange={handleImageChange} />
+            {croppedImage ? <img src={URL.createObjectURL(croppedImage)} alt="Cropped" className="w-64 h-64 object-cover rounded" /> : existingImage && <img src={existingImage} alt="Existing" className="w-64 h-64 object-cover rounded" />}
+
+            <Modal isOpen={cropModalOpen} onRequestClose={() => setCropModalOpen(false)} ariaHideApp={false} className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60">
+              <div className="bg-white p-4 rounded-lg shadow-lg w-[90%] max-w-lg">
+                <h2 className="text-lg font-semibold mb-3">Crop your image</h2>
+                <div className="relative w-full h-64 bg-gray-200">
+                  <Cropper image={imageFile ? URL.createObjectURL(imageFile) : existingImage} crop={crop} zoom={zoom} aspect={16/9} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={onCropComplete} />
+                </div>
+                <div className="flex justify-between items-center mt-3">
+                  <input type="range" min={1} max={3} step={0.1} value={zoom} onChange={(e) => setZoom(e.target.value)} />
+                  <button type="button" onClick={showCroppedImage} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Crop & Save</button>
+                </div>
+              </div>
+            </Modal>
+
+            <EditorToolbar editor={editor} />
+            <EditorContent editor={editor} />
+
+            <button type="submit" className="w-full bg-blue-500 text-white py-3 rounded hover:bg-blue-600 transition">Update Blog</button>
+          </form>
         </div>
-
-        {/* New Image Upload */}
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setImageFile(e.target.files[0])}
-        />
-
-        {/* Toolbar */}
-        <div className="flex gap-2 flex-wrap mb-2">
-          <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className="px-2 py-1 border rounded">Bold</button>
-          <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className="px-2 py-1 border rounded">Italic</button>
-          <button type="button" onClick={() => editor.chain().focus().toggleUnderline().run()} className="px-2 py-1 border rounded">Underline</button>
-          <select onChange={(e) => editor.chain().focus().setFontFamily(e.target.value).run()} className="border rounded px-2 py-1">
-            <option value="">Font Family</option>
-            <option value="Arial">Arial</option>
-            <option value="Georgia">Georgia</option>
-            <option value="Courier New">Courier New</option>
-            <option value="Times New Roman">Times New Roman</option>
-            <option value="Verdana">Verdana</option>
-          </select>
-          <input type="color" onChange={(e) => editor.chain().focus().setColor(e.target.value).run()} className="w-10 h-8 p-0 border rounded"/>
-        </div>
-
-        <EditorContent editor={editor} />
-
-        <button
-          type="submit"
-          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
-        >
-          Update Blog
-        </button>
-      </form>
+      </div>
     </div>
   );
 }

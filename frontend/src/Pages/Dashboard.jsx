@@ -8,11 +8,136 @@ import ProfileMenu from "../components/ProfileMenu.jsx";
 import AllBlogList from "../components/AllBlogList.jsx";
 import logo from "../assets/logo.png";
 
+// Categories and subcategories
+const categoryData = [
+  {
+    icon: "📝",
+    name: "General & Lifestyle",
+    subcategories: [
+      "Personal Development",
+      "Productivity & Time Management",
+      "Minimalism",
+      "Life Hacks",
+      "Wellness & Mental Health",
+    ],
+  },
+  {
+    icon: "🌍",
+    name: "Travel & Culture",
+    subcategories: [
+      "Travel Guides",
+      "Backpacking & Budget Travel",
+      "Cultural Experiences",
+      "Local Cuisine",
+      "Travel Photography",
+    ],
+  },
+  {
+    icon: "🍳",
+    name: "Food & Drink",
+    subcategories: [
+      "Recipes",
+      "Restaurant Reviews",
+      "Vegan & Vegetarian Living",
+      "Baking & Desserts",
+      "Wine & Spirits",
+    ],
+  },
+  {
+    icon: "💼",
+    name: "Business & Finance",
+    subcategories: [
+      "Entrepreneurship",
+      "Freelancing & Side Hustles",
+      "Marketing & Branding",
+      "Investing & Personal Finance",
+      "E-commerce & Dropshipping",
+    ],
+  },
+  {
+    icon: "🧠",
+    name: "Education & Learning",
+    subcategories: [
+      "Study Tips",
+      "Language Learning",
+      "Online Courses & MOOCs",
+      "Academic Research",
+      "Homeschooling",
+    ],
+  },
+  {
+    icon: "💻",
+    name: "Tech & Digital Life",
+    subcategories: [
+      "Software Reviews",
+      "Coding & Programming",
+      "AI & Machine Learning",
+      "Cybersecurity",
+      "Gadgets & Gear",
+    ],
+  },
+  {
+    icon: "🎨",
+    name: "Creative Arts",
+    subcategories: [
+      "Writing & Storytelling",
+      "Photography",
+      "Graphic Design",
+      "DIY & Crafts",
+      "Music & Performance",
+    ],
+  },
+  {
+    icon: "🧘",
+    name: "Health & Fitness",
+    subcategories: [
+      "Workout Routines",
+      "Nutrition & Diets",
+      "Yoga & Meditation",
+      "Health Conditions & Recovery",
+      "Sports & Athletics",
+    ],
+  },
+  {
+    icon: "🏡",
+    name: "Home & Living",
+    subcategories: [
+      "Interior Design",
+      "Gardening",
+      "Home Improvement",
+      "Sustainable Living",
+      "Parenting & Family Life",
+    ],
+  },
+  {
+    icon: "🎮",
+    name: "Entertainment & Media",
+    subcategories: [
+      "Movie & TV Reviews",
+      "Book Recommendations",
+      "Celebrity News",
+      "Gaming",
+      "Pop Culture Commentary",
+    ],
+  },
+  {
+    icon: "🗳️",
+    name: "Society & Opinion",
+    subcategories: [
+      "Politics & Current Events",
+      "Environmental Issues",
+      "Human Rights",
+      "Philosophy & Ethics",
+      "Social Commentary",
+    ],
+  },
+];
+
 export default function Dashboard() {
   const [blogs, setBlogs] = useState([]);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
-  const [categories, setCategories] = useState([]);
+  const [mainCategory, setMainCategory] = useState("");
+  const [subCategory, setSubCategory] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
 
@@ -33,10 +158,18 @@ export default function Dashboard() {
   };
 
   // ✅ Fetch blogs with optional filters
-  const fetchBlogs = async (searchTerm = search, selectedCategory = category) => {
+  const fetchBlogs = async (
+    searchTerm = search,
+    mainCat = mainCategory,
+    subCat = subCategory
+  ) => {
     try {
       const res = await axios.get("http://localhost:5000/api/blogs", {
-        params: { search: searchTerm, category: selectedCategory },
+        params: {
+          search: searchTerm,
+          category: mainCat,
+          subcategory: subCat,
+        },
       });
 
       // Convert ObjectIds to strings for consistent comparison
@@ -46,32 +179,29 @@ export default function Dashboard() {
       }));
 
       setBlogs(blogsWithStringLikes);
-
-      // Extract unique categories
-      const uniqueCategories = [
-        ...new Set(res.data.map((b) => b.category).filter(Boolean)),
-      ];
-      setCategories(uniqueCategories);
     } catch (err) {
       console.error("Failed to fetch blogs:", err);
     }
   };
 
   // ✅ Debounced search to prevent multiple API calls per keystroke
-  const debouncedFetchBlogs = useCallback(debounce(fetchBlogs, 500), [category]);
+  const debouncedFetchBlogs = useCallback(
+    debounce(fetchBlogs, 500),
+    [mainCategory, subCategory]
+  );
 
   // ✅ Initial user fetch
   useEffect(() => {
     fetchUser();
   }, []);
 
-  // ✅ Fetch blogs when user, search, or category changes
+  // ✅ Fetch blogs when user, search, or categories change
   useEffect(() => {
     if (user) {
-      debouncedFetchBlogs(search, category);
+      debouncedFetchBlogs(search, mainCategory, subCategory);
     }
     return debouncedFetchBlogs.cancel;
-  }, [search, category, user, debouncedFetchBlogs]);
+  }, [search, mainCategory, subCategory, user, debouncedFetchBlogs]);
 
   // ✅ Logout handler
   const handleLogout = () => {
@@ -142,18 +272,41 @@ export default function Dashboard() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+
+          {/* Main Category Filter */}
           <select
             className="p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            value={mainCategory}
+            onChange={(e) => {
+              setMainCategory(e.target.value);
+              setSubCategory(""); // reset subcategory when main changes
+            }}
           >
             <option value="">All Categories</option>
-            {categories.map((c, i) => (
-              <option key={i} value={c}>
-                {c}
+            {categoryData.map((c) => (
+              <option key={c.name} value={c.name}>
+                {c.icon} {c.name}
               </option>
             ))}
           </select>
+
+          {/* Subcategory Filter */}
+          {mainCategory && (
+            <select
+              className="p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+              value={subCategory}
+              onChange={(e) => setSubCategory(e.target.value)}
+            >
+              <option value="">All Subcategories</option>
+              {categoryData
+                .find((c) => c.name === mainCategory)
+                ?.subcategories.map((sc) => (
+                  <option key={sc} value={sc}>
+                    {sc}
+                  </option>
+                ))}
+            </select>
+          )}
         </div>
 
         {/* Blog List Content */}
@@ -161,7 +314,7 @@ export default function Dashboard() {
           <AllBlogList
             blogs={blogs}
             currentUserId={user?._id}
-            refreshBlogs={() => fetchBlogs(search, category)}
+            refreshBlogs={() => fetchBlogs(search, mainCategory, subCategory)}
           />
         </div>
       </div>

@@ -20,7 +20,6 @@ export default function MyBlogs() {
   const [editCommentText, setEditCommentText] = useState("");
 
   const navigate = useNavigate();
-
   const token = localStorage.getItem("token");
   const currentUserId = user?._id;
 
@@ -63,7 +62,8 @@ export default function MyBlogs() {
 
   const getProfileImage = () => {
     if (!user?.profileImage) return null;
-    if (user.profileImage.startsWith("data:image") || user.profileImage.startsWith("http")) return user.profileImage;
+    if (user.profileImage.startsWith("data:image") || user.profileImage.startsWith("http"))
+      return user.profileImage;
     const base64Pattern = /^[A-Za-z0-9+/]+={0,2}$/;
     if (base64Pattern.test(user.profileImage)) return `data:image/png;base64,${user.profileImage}`;
     return `http://localhost:5000${user.profileImage}`;
@@ -109,9 +109,16 @@ export default function MyBlogs() {
     }
   };
 
-  // Toggle comments
+  // ✅ Updated toggleComments with fade animation
   const toggleComments = async (blogId) => {
-    if (!openComments[blogId]) {
+    // Toggle open/close immediately
+    setOpenComments((prev) => ({
+      ...prev,
+      [blogId]: !prev[blogId],
+    }));
+
+    // Fetch comments only if not loaded yet
+    if (!commentsData[blogId]) {
       try {
         const res = await axios.get(`http://localhost:5000/api/comments/${blogId}`);
         setCommentsData((prev) => ({ ...prev, [blogId]: res.data }));
@@ -119,7 +126,6 @@ export default function MyBlogs() {
         console.error(err);
       }
     }
-    setOpenComments((prev) => ({ ...prev, [blogId]: !prev[blogId] }));
   };
 
   const addComment = async (blogId) => {
@@ -187,8 +193,11 @@ export default function MyBlogs() {
   };
 
   return (
-    <div className="flex">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-100 to-indigo-200 font-sans text-gray-800 flex">
+      {/* Sidebar */}
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} handleLogout={handleLogout} />
+
+      {/* Overlay for mobile */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-30 z-10 md:hidden"
@@ -196,9 +205,10 @@ export default function MyBlogs() {
         />
       )}
 
-      <div className="flex-1 md:ml-64 p-6">
+      {/* Main Content */}
+      <div className="flex flex-col flex-1 md:ml-64 transition-all duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 sticky top-0 bg-white z-10 py-2 border-b">
+        <div className="flex items-center justify-between bg-white bg-opacity-90 py-3 px-6 shadow border-b z-10">
           <div className="flex items-center gap-4">
             <button
               className="md:hidden p-2 rounded bg-gray-100"
@@ -206,7 +216,7 @@ export default function MyBlogs() {
             >
               ☰
             </button>
-            <h1 className="text-2xl font-bold text-gray-800">📝 My Blogs</h1>
+            <h1 className="text-2xl font-bold text-indigo-700 tracking-wide">📝 My Blogs</h1>
           </div>
 
           <ProfileMenu
@@ -216,38 +226,52 @@ export default function MyBlogs() {
           />
         </div>
 
-        {/* Blog List */}
-        <BlogList
-          blogs={blogs}
-          likedBlogIds={likedBlogIds}
-          activeAnimations={activeAnimations}
-          openComments={openComments}
-          commentsData={commentsData}
-          commentCounts={commentCounts}
-          currentUserId={currentUserId}
-          toggleLike={toggleLike}
-          toggleComments={toggleComments}
-          handleDelete={handleDelete}
-          setNewCommentText={setNewCommentText}
-          newCommentText={newCommentText}
-          addComment={addComment}
-          editingCommentId={editingCommentId}
-          startEditComment={startEditComment}
-          saveEditComment={saveEditComment}
-          editCommentText={editCommentText}
-          setEditCommentText={setEditCommentText}
-          deleteComment={deleteComment}
-        />
+        {/* Blog List Section with separate padding/margin */}
+        <div className="px-6 py-6 md:px-10 md:py-8 w-[calc(100%-100px)] mx-[50px] transition-all duration-300">
+          <BlogList
+            blogs={blogs}
+            likedBlogIds={likedBlogIds}
+            activeAnimations={activeAnimations}
+            openComments={openComments}
+            commentsData={commentsData}
+            commentCounts={commentCounts}
+            currentUserId={currentUserId}
+            toggleLike={toggleLike}
+            toggleComments={toggleComments}  // Updated function
+            handleDelete={handleDelete}
+            setNewCommentText={setNewCommentText}
+            newCommentText={newCommentText}
+            addComment={addComment}
+            editingCommentId={editingCommentId}
+            startEditComment={startEditComment}
+            saveEditComment={saveEditComment}
+            editCommentText={editCommentText}
+            setEditCommentText={setEditCommentText}
+            deleteComment={deleteComment}
+          />
+        </div>
       </div>
 
+      {/* Like animation styles */}
       <style>
         {`
           @keyframes flyThumbs {0% { transform: translateY(0) scale(1); opacity:1;} 50% { transform: translateY(-20px) scale(1.3); opacity:1;} 100% { transform: translateY(-40px) scale(0); opacity:0; }}
           .animate-fly-thumbs { animation: flyThumbs 1s ease-out forwards; }
           ${[...Array(6)].map((_, i) => `
-            @keyframes particle-${i} {0%{transform:translate(0,0);opacity:1;}100%{transform:translate(${Math.random()*40-20}px,${Math.random()*-40}px);opacity:0;}}
+            @keyframes particle-${i} {0%{transform:translate(0,0);opacity:1;}100%{transform:translate(${Math.random()*40-20}px,${Math.random()*-40}px);opacity:0;} }
             .animate-particle-${i}{animation:particle-${i} 0.8s ease-out forwards;}
           `).join("")}
+
+          /* Fade-in/out for comments */
+          .comment-section {
+            transition: opacity 0.3s ease;
+            opacity: 1;
+          }
+          .comment-section.hidden {
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+          }
         `}
       </style>
     </div>
