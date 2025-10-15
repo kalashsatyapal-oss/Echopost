@@ -1,11 +1,20 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
-import ManageUsers from "../components/ManageUsers";
-import EditGuidelines from "../components/EditGuidelines";
+import ManageUsers from "../../components/ManageUsers";
+import EditGuidelines from "../../components/EditGuidelines";
+import ReportedBlogs from "../../components/ReportedBlogs"; // ✅ added
 import { useNavigate } from "react-router-dom";
-import { FaUsers, FaBlog, FaCogs, FaClipboardList, FaHome, FaEdit } from "react-icons/fa";
-import logo from "../assets/logo.png";
+import {
+  FaUsers,
+  FaBlog,
+  FaCogs,
+  FaClipboardList,
+  FaHome,
+  FaEdit,
+  FaFlag,
+} from "react-icons/fa";
+import logo from "../../assets/logo.webp";
 
 export default function SuperAdminDashboard() {
   const [requests, setRequests] = useState([]);
@@ -15,7 +24,7 @@ export default function SuperAdminDashboard() {
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [editTag, setEditTag] = useState(null); // ✅ For tag editing
+  const [editTag, setEditTag] = useState(null);
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
@@ -103,7 +112,6 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  // ✅ New functions for SuperAdmin tag editing
   const handleEditTag = (tag) => setEditTag(tag);
 
   const handleUpdateTag = async (e) => {
@@ -168,6 +176,7 @@ export default function SuperAdminDashboard() {
             { key: "users", label: "Manage Users", icon: <FaUsers /> },
             { key: "guidelines", label: "Edit Guidelines", icon: <FaCogs /> },
             { key: "tags", label: "Manage Tags", icon: <FaBlog /> },
+            { key: "reported", label: "Reported Blogs", icon: <FaFlag className="text-red-600" /> }, // ✅ added new tab
           ].map((tab) => (
             <button
               key={tab.key}
@@ -192,7 +201,7 @@ export default function SuperAdminDashboard() {
       <main className="max-w-7xl mx-auto px-6 py-10 space-y-10">
         {activeTab === "dashboard" && (
           <>
-            {/* Stats Section */}
+            {/* Dashboard Section */}
             <div className="grid md:grid-cols-2 gap-8 mb-10">
               <div className="bg-white bg-opacity-90 p-8 rounded-2xl shadow-lg flex items-center gap-5 hover:scale-105 transition-transform">
                 <div className="p-4 bg-indigo-100 rounded-xl">
@@ -215,7 +224,7 @@ export default function SuperAdminDashboard() {
               </div>
             </div>
 
-            {/* Admin Requests Section */}
+            {/* Admin Requests */}
             <h2 className="text-3xl font-bold text-gray-800 mb-4 flex items-center gap-2">
               📥 Admin Requests
             </h2>
@@ -331,7 +340,6 @@ export default function SuperAdminDashboard() {
                         {new Date(tag.createdAt).toLocaleDateString()}
                       </td>
                       <td className="p-2 flex gap-3">
-                        {/* ✅ Edit button only for SuperAdmin */}
                         <button
                           onClick={() => handleEditTag(tag)}
                           className="text-blue-600 hover:underline flex items-center gap-1"
@@ -359,9 +367,17 @@ export default function SuperAdminDashboard() {
             </div>
           </section>
         )}
+
+        {/* ✅ Reported Blogs Section */}
+        {activeTab === "reported" && (
+          <section className="bg-white bg-opacity-90 p-6 rounded-2xl shadow-lg mt-6">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">🚨 Reported Blogs</h2>
+            <ReportedBlogs />
+          </section>
+        )}
       </main>
 
-      {/* ✅ Edit Tag Modal */}
+      {/* Edit Tag Modal */}
       {editTag && (
         <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-xl w-[90%] max-w-md shadow-lg">

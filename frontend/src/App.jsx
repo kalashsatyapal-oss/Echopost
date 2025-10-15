@@ -10,8 +10,9 @@ import EditBlog from "./pages/EditBlog.jsx";
 import Profile from "./pages/Profile.jsx";
 import MyBlogs from "./pages/MyBlogs.jsx"; // ✅ new page
 import AdminDashboard from "./pages/AdminDashboard";
-import SuperAdminDashboard from "./pages/SuperAdminDashboard";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard/SuperAdminDashboard.jsx";
 import Guidelines from "./pages/Guidelines";
+import ReportBlog from "./pages/ReportBlog.jsx";
 
 function App() {
   return (
@@ -74,6 +75,7 @@ function App() {
         }
       />
       <Route path="/guidelines" element={<Guidelines />} />
+      <Route path="/report/:id" element={<ReportBlog />} />
     </Routes>
   );
 }

@@ -184,3 +184,26 @@ export const toggleLike = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// Report a blog
+export const reportBlog = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const blog = await Blog.findById(req.params.id);
+    if (!blog) return res.status(404).json({ message: "Blog not found" });
+
+    // Check if user already reported
+    const alreadyReported = blog.reports.find(
+      (r) => r.user.toString() === req.user._id.toString()
+    );
+    if (alreadyReported) return res.status(400).json({ message: "You already reported this blog" });
+
+    blog.reports.push({ user: req.user._id, reason });
+    await blog.save();
+
+    res.json({ message: "Blog reported successfully", reportsCount: blog.reports.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};

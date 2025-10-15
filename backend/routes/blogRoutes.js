@@ -9,6 +9,7 @@ import {
   toggleLike,
 } from "../controllers/blogController.js";
 import { protect } from "../middleware/authMiddleware.js";
+import { reportBlog } from "../controllers/blogController.js";
 
 const router = express.Router();
 
@@ -22,5 +23,8 @@ router.route("/:id")
   .delete(protect, deleteBlog);
 
 router.put("/like/:id", protect, toggleLike);
+
+// Report a blog
+router.put("/report/:id", protect, reportBlog);
 
 export default router;
